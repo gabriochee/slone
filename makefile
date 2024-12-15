@@ -1,25 +1,21 @@
 # --------------------------
-#  	    VARS	
+#  	    VARIABLES
 # --------------------------
 
-CFLAGS = -Wall -Werror
-C      = gcc
-EXEC   = interpreter
-#
+CFLAGS  = -Wall -Werror
+
 # --------------------------
-#  	  COMPILE	
+#  	  COMPILATION
 # --------------------------
 
-all: $(EXEC)
+all: main.o lexer.o
+	gcc $(CFLAGS) main.o lexer.o -o interpreter
 
-$(EXEC): main.o
-	$(C) -o $(EXEC) main.o $(CFLAGS)
+main.o: main.c
+	gcc $(CFLAGS) -c main.c -o main.o
 
-main.o :
-	$(C) -o main.o -c main.c $(CFLAGS)
+lexer.o: sources/lexer.c
+	gcc $(CFLAGS) -c sources/lexer.c -o lexer.o
 
-clean: 
+clean:
 	rm *.o
-
-mrproper: clean
-	rm $(EXEc)
