@@ -28,7 +28,7 @@ void free_token_stream(TokenStream * stream) {
 }
 
 TokenStream * new_token_stream(char * str) {
-  size_t cursor1 = -1;//, cursor2 = 0;
+  size_t cursor1 = -1, cursor2;
   size_t len = strlen(str);
 
   TokenStream * stream = NULL;
@@ -42,9 +42,9 @@ TokenStream * new_token_stream(char * str) {
 
   main_boucle:
   while (++cursor1 < len) {
+    cursor2 = cursor1;
 
     while (isspace(str[cursor1])) {
-      cursor2 = cursor1 + 1;
       goto main_boucle;
     }
 
@@ -63,11 +63,38 @@ TokenStream * new_token_stream(char * str) {
       case '.':
         push_token(stream, (Token){DOT, "."});
         goto main_boucle;
+      case '!':
+        push_token(stream, (Token){EXCLAM, "!"});
+        goto main_boucle;
+      case '\'':
+        push_token(stream, (Token){SQUOTE, "\'"});
+        goto main_boucle;
+      case '"':
+        push_token(stream, (Token){DQUOTE, "\""});
+        goto main_boucle;
       case '=':
         push_token(stream, (Token){EQUAL, "="});
         goto main_boucle;
-      case '!':
-        push_token(stream, (Token){EXCLAM, "!"});
+      case '>':
+        push_token(stream, (Token){GREATER, ">"});
+        goto main_boucle;
+      case '<':
+    	push_token(stream, (Token){LOWER, "<"});
+        goto main_boucle;
+      case '+':
+    	push_token(stream, (Token){PLUS, "+"});
+        goto main_boucle;
+      case '-':
+    	push_token(stream, (Token){MINUS, "-"});
+        goto main_boucle;
+      case '*':
+    	push_token(stream, (Token){STAR, "*"});
+        goto main_boucle;
+      case '/':
+    	push_token(stream, (Token){SLASH, "/"});
+        goto main_boucle;
+      case '%':
+    	push_token(stream, (Token){PERCENT, "%"});
         goto main_boucle;
       case '(':
         push_token(stream, (Token){LPAREN, "("});
@@ -91,7 +118,9 @@ TokenStream * new_token_stream(char * str) {
         break;
     }
 
-
+	while (cursor2 < len && !isspace(str[cursor2]) && strchr("!\"%'()*+,-./;<=>[]^_`{}", str[cursor2]) == NULL) {
+  		cursor2++;
+    }
 
   }
 
