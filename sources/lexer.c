@@ -5,48 +5,30 @@
 
 #include "../headers/lexer.h"
 
-typedef enum TokenType TokenType;
-typedef struct Token Token;
-typedef struct TokenStream TokenStream;
+void set_token_stream(TokenStream * stream) {
+  if (stream != NULL) {
+    stream->tokens = malloc(sizeof(Token));
+    stream->token_count = 1;
+    stream->current = 0;
+  }
+}
 
-enum TokenType {
-  START,
-  NAME,
-  IF,
-  ELSE,
-  FOR,
-  WHILE,
-  INTEGER,
-  FLOAT,
-  CHAR,
-  STRING,
-  SEMICOLON,
-  EQUAL,
-  EXCLAM,
-  COMMA,
-  DOT,
-  LPAREN,
-  RPAREN,
-  LBRACE,
-  RBRACE,
-  LBRACKET,
-  RBRACKET,
-  END,
-};
+void push_token(TokenStream * stream, Token token) {
+  if (stream->current == stream->token_count) {
+    stream->tokens = realloc(stream->tokens, (stream->token_count *= 2) * sizeof(Token));
+  }
 
-struct Token {
-  TokenType type;
-  char* value;
-};
+  if (stream->tokens != NULL) {
+    stream->tokens[stream->current++] = token;
+  }
+}
 
-struct TokenStream {
-  unsigned int token_count;
-  unsigned int current;
-  Token* tokens;
-};
+void free_token_stream(TokenStream * stream) {
+  free(stream->tokens);
+}
 
 TokenStream * new_token_stream(char * str) {
-  size_t cursor1 = 0;//, cursor2 = 0;
+  size_t cursor1 = -1;//, cursor2 = 0;
   size_t len = strlen(str);
 
   TokenStream * stream = NULL;
@@ -59,10 +41,10 @@ TokenStream * new_token_stream(char * str) {
   set_token_stream(stream);
 
   main_boucle:
-  while (cursor1++ < len) {
-    //cursor2 = cursor1;
+  while (++cursor1 < len) {
 
     while (isspace(str[cursor1])) {
+      cursor2 = cursor1 + 1;
       goto main_boucle;
     }
 
@@ -70,8 +52,6 @@ TokenStream * new_token_stream(char * str) {
       fprintf(stderr, "ERREUR::LEXEUR::ALLOCATION_2\n\nL'allocation mémoire du flux de tokens a échoué.\n");
       return NULL;
     }
-
-    //TokenType type;
 
     switch (str[cursor1]) {
       case ';':
@@ -108,31 +88,14 @@ TokenStream * new_token_stream(char * str) {
         push_token(stream, (Token){RBRACKET, "]"});
         goto main_boucle;
       default:
+        break;
     }
+
+
+
   }
+
+  push_token(stream, (Token){END, NULL});
 
   return stream;
-}
-
-void set_token_stream(TokenStream * stream) {
-  if (stream != NULL) {
-    stream->tokens = NULL;
-    stream->token_count = 0;
-    stream->current = 0;
-  }
-}
-
-void push_token(TokenStream * stream, Token token) {
-  if (stream->current == stream->token_count) {
-    stream->tokens = realloc(stream->tokens, (stream->token_count *= 2) * sizeof(Token));
-  }
-
-  if (stream->tokens != NULL) {
-    stream->tokens[++stream->current] = token;
-  }
-}
-
-void free_token_stream(TokenStream * stream) {
-  free(stream->tokens);
-  free(stream);
 }

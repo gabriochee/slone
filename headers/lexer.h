@@ -5,10 +5,45 @@ typedef enum TokenType TokenType;
 typedef struct Token Token;
 typedef struct TokenStream TokenStream;
 
-enum TokenType;
+enum TokenType {
+  NAME,
+  IF,
+  ELSE,
+  FOR,
+  WHILE,
+  INTEGER,
+  FLOAT,
+  CHAR,
+  STRING,
+  SEMICOLON,
+  EQUAL,
+  EXCLAM,
+  COMMA,
+  DOT,
+  PLUS,
+  MINUS,
+  STAR,
+  SLASH,
+  PERCENT,
+  LPAREN,
+  RPAREN,
+  LBRACE,
+  RBRACE,
+  LBRACKET,
+  RBRACKET,
+  END,
+};
 
-struct Token;
-struct TokenStream;
+struct Token {
+  TokenType type;
+  char* value;
+};
+
+struct TokenStream {
+  unsigned int token_count;
+  unsigned int current;
+  Token* tokens;
+};
 
 TokenStream * new_token_stream(char * str);
 
