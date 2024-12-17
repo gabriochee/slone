@@ -42,7 +42,7 @@ int main(const int argc, const char * argv[]){
 
   fclose(file);
   free_token_stream(stream);
-  free(file_content);
   free(stream);
+  free(file_content);
   return 0;
 }
