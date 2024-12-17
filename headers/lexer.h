@@ -45,6 +45,7 @@ enum TokenType {
 struct Token {
   TokenType type;
   char* value;
+  unsigned int position[2];
 };
 
 struct TokenStream {
