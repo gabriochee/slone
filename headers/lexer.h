@@ -49,7 +49,7 @@ struct Token {
 };
 
 struct TokenStream {
-  unsigned int token_count;
+  unsigned int stream_capacity;
   unsigned int current;
   Token* tokens;
 };
@@ -59,5 +59,8 @@ TokenStream * new_token_stream(char * str);
 void set_token_stream(TokenStream * stream);
 void push_token(TokenStream * stream, Token token);
 void free_token_stream(TokenStream * stream);
+void rewind_token_stream(TokenStream * stream);
+
+Token * next_token(TokenStream * stream);
 
 #endif

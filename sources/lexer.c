@@ -9,14 +9,14 @@ void set_token_stream(TokenStream * stream) {
   // Permet d'initialiser un flux de tokens.
   if (stream != NULL) {
     stream->tokens = malloc(sizeof(Token));
-    stream->token_count = 1;
+    stream->stream_capacity = 1;
     stream->current = 0;
   }
 }
 
 void push_token(TokenStream * stream, Token token) {
-  if (stream->current == stream->token_count) {
-    stream->tokens = realloc(stream->tokens, (stream->token_count *= 2) * sizeof(Token));
+  if (stream->current == stream->stream_capacity) {
+    stream->tokens = realloc(stream->tokens, (stream->stream_capacity *= 2) * sizeof(Token));
   }
 
   if (stream->tokens != NULL) {
@@ -32,6 +32,18 @@ void free_token_stream(TokenStream * stream) {
   }
 
   free(stream->tokens);
+}
+
+void rewind_token_stream(TokenStream * stream) {
+  stream->current = 0;
+}
+
+Token * next_token(TokenStream * stream) {
+  Token * next = stream->tokens + stream->current;
+  if (stream->current < stream->stream_capacity && stream->tokens[stream->current].type != END) {
+    stream->current++;
+  }
+  return next;
 }
 
 TokenStream * new_token_stream(char * str) {
@@ -200,6 +212,8 @@ TokenStream * new_token_stream(char * str) {
   }
 
   push_token(stream, (Token){END, NULL});
+
+  rewind_token_stream(stream);
 
   return stream;
 }

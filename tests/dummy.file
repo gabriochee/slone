@@ -1,3 +1,5 @@
 test = 9;
 
-print(test + 8); var1 = 10;
+print(test + 8);
+
+last

@@ -38,7 +38,13 @@ int main(const int argc, const char * argv[]){
 
   TokenStream * stream = new_token_stream(file_content);
 
-  printf("TokenStream {\n  current : %u\n  token_count : %u\n}\n", stream->current, stream->token_count);
+  Token * token = NULL;
+
+  while ((token = next_token(stream))->type != END) {
+    if (token->value != NULL){
+      printf("%s\n", token->value);
+    }
+  }
 
   fclose(file);
   free_token_stream(stream);
