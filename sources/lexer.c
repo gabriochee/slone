@@ -41,8 +41,6 @@ TokenStream * new_token_stream(char * str) {
   size_t cursor1 = -1, cursor2;
   size_t len = strlen(str);
 
-  unsigned int cr_number = 0, last_cr_position = 0;
-
   TokenStream * stream = NULL;
 
   if ((stream = malloc(sizeof(TokenStream))) == NULL) {
@@ -70,10 +68,6 @@ TokenStream * new_token_stream(char * str) {
     // ----------- Analyse simple (caractère à caractère)
 
     if (isspace(str[cursor1])) {
-      if (str[cursor1] == '\n') {
-        cr_number++;
-        last_cr_position = cursor1;
-      }
       continue;
     }
 
@@ -84,65 +78,64 @@ TokenStream * new_token_stream(char * str) {
 
     switch (str[cursor1]) {
       case ';':
-        push_token(stream, (Token){SEMICOLON, NULL, {cr_number, cursor1 - last_cr_position}});
-        printf("SEMICOLON at line %u pos %zd\n", cr_number, cursor1 - last_cr_position);
+        push_token(stream, (Token){SEMICOLON, NULL, cursor1});
         continue;
       case ',':
-        push_token(stream, (Token){COMMA, NULL, {cr_number, cursor1 - last_cr_position}});
+        push_token(stream, (Token){COMMA, NULL, cursor1});
         continue;
       case '.':
-        push_token(stream, (Token){DOT, NULL, {cr_number, cursor1 - last_cr_position}});
+        push_token(stream, (Token){DOT, NULL, cursor1});
         continue;
       case '!':
-        push_token(stream, (Token){EXCLAM, NULL, {cr_number, cursor1 - last_cr_position}});
+        push_token(stream, (Token){EXCLAM, NULL, cursor1});
         continue;
       case '\'':
-        push_token(stream, (Token){SQUOTE, NULL, {cr_number, cursor1 - last_cr_position}});
+        push_token(stream, (Token){SQUOTE, NULL, cursor1});
         continue;
       case '"':
-        push_token(stream, (Token){DQUOTE, NULL, {cr_number, cursor1 - last_cr_position}});
+        push_token(stream, (Token){DQUOTE, NULL, cursor1});
         continue;
       case '=':
-        push_token(stream, (Token){EQUAL, NULL, {cr_number, cursor1 - last_cr_position}});
+        push_token(stream, (Token){EQUAL, NULL, cursor1});
         continue;
       case '>':
-        push_token(stream, (Token){GREATER, NULL, {cr_number, cursor1 - last_cr_position}});
+        push_token(stream, (Token){GREATER, NULL, cursor1});
         continue;
       case '<':
-    	push_token(stream, (Token){LOWER, NULL, {cr_number, cursor1 - last_cr_position}});
+    	push_token(stream, (Token){LOWER, NULL, cursor1});
         continue;
       case '+':
-    	push_token(stream, (Token){PLUS, NULL, {cr_number, cursor1 - last_cr_position}});
+    	push_token(stream, (Token){PLUS, NULL, cursor1});
         continue;
       case '-':
-    	push_token(stream, (Token){MINUS, NULL, {cr_number, cursor1 - last_cr_position}});
+    	push_token(stream, (Token){MINUS, NULL, cursor1});
         continue;
       case '*':
-    	push_token(stream, (Token){STAR, NULL, {cr_number, cursor1 - last_cr_position}});
+    	push_token(stream, (Token){STAR, NULL, cursor1});
         continue;
       case '/':
-    	push_token(stream, (Token){SLASH, NULL, {cr_number, cursor1 - last_cr_position}});
+    	push_token(stream, (Token){SLASH, NULL, cursor1});
         continue;
       case '%':
-    	push_token(stream, (Token){PERCENT, NULL, {cr_number, cursor1 - last_cr_position}});
+    	push_token(stream, (Token){PERCENT, NULL, cursor1});
         continue;
       case '(':
-        push_token(stream, (Token){LPAREN, NULL, {cr_number, cursor1 - last_cr_position}});
+        push_token(stream, (Token){LPAREN, NULL, cursor1});
         continue;
       case ')':
-        push_token(stream, (Token){RPAREN, NULL, {cr_number, cursor1 - last_cr_position}});
+        push_token(stream, (Token){RPAREN, NULL, cursor1});
         continue;
       case '{':
-        push_token(stream, (Token){LBRACE, NULL, {cr_number, cursor1 - last_cr_position}});
+        push_token(stream, (Token){LBRACE, NULL, cursor1});
         continue;
       case '}':
-        push_token(stream, (Token){RBRACE, NULL, {cr_number, cursor1 - last_cr_position}});
+        push_token(stream, (Token){RBRACE, NULL, cursor1});
         continue;
       case '[':
-        push_token(stream, (Token){LBRACKET, NULL, {cr_number, cursor1 - last_cr_position}});
+        push_token(stream, (Token){LBRACKET, NULL, cursor1});
         continue;
       case ']':
-        push_token(stream, (Token){RBRACKET, NULL, {cr_number, cursor1 - last_cr_position}});
+        push_token(stream, (Token){RBRACKET, NULL, cursor1});
         continue;
       default:
         break;
@@ -164,27 +157,27 @@ TokenStream * new_token_stream(char * str) {
 
     if (strstr(keyword_set, cpy) != NULL) {
       if (strcmp(cpy, "if") == 0) {
-      	push_token(stream, (Token){IF, NULL});
+      	push_token(stream, (Token){IF, NULL, cursor1});
       } else if (strcmp(cpy, "else") == 0) {
-      	push_token(stream, (Token){ELSE, NULL});
+      	push_token(stream, (Token){ELSE, NULL, cursor1});
       } else if (strcmp(cpy, "for") == 0) {
-      	push_token(stream, (Token){FOR, NULL});
+      	push_token(stream, (Token){FOR, NULL, cursor1});
       } else if (strcmp(cpy, "while") == 0) {
-      	push_token(stream, (Token){WHILE, NULL});
+      	push_token(stream, (Token){WHILE, NULL, cursor1});
       } else if (strcmp(cpy, "continue") == 0) {
-      	push_token(stream, (Token){CONTINUE, NULL});
+      	push_token(stream, (Token){CONTINUE, NULL, cursor1});
       } else if (strcmp(cpy, "break") == 0) {
-      	push_token(stream, (Token){BREAK, NULL});
+      	push_token(stream, (Token){BREAK, NULL, cursor1});
       } else if (strcmp(cpy, "and") == 0) {
-      	push_token(stream, (Token){AND, NULL});
+      	push_token(stream, (Token){AND, NULL, cursor1});
       } else if (strcmp(cpy, "or") == 0) {
-      	push_token(stream, (Token){OR, NULL});
+      	push_token(stream, (Token){OR, NULL, cursor1});
       } else if (strcmp(cpy, "xor") == 0) {
-      	push_token(stream, (Token){XOR, NULL});
+      	push_token(stream, (Token){XOR, NULL, cursor1});
       } else if (strcmp(cpy, "true") == 0) {
-      	push_token(stream, (Token){TRUE, NULL});
+      	push_token(stream, (Token){TRUE, NULL, cursor1});
       } else if (strcmp(cpy, "false") == 0) {
-      	push_token(stream, (Token){FALSE, NULL});
+      	push_token(stream, (Token){FALSE, NULL, cursor1});
       }
 
       cursor1 = cursor2;
@@ -196,12 +189,12 @@ TokenStream * new_token_stream(char * str) {
 
     while (isdigit(cpy[pos]) && pos++ < (cursor2 - cursor1 + 1));
     if (cursor2 - cursor1 + 1 == pos){
-       push_token(stream, (Token){NUMBER, cpy});
+       push_token(stream, (Token){NUMBER, cpy, cursor1});
        cursor1 = cursor2;
        continue;
     }
 
-    push_token(stream, (Token){NAME, cpy});
+    push_token(stream, (Token){NAME, cpy, cursor1});
 
     cursor1 = cursor2;
   }
