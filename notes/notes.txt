@@ -1,0 +1,41 @@
+----- Ce fichier n'a aucune utilité technique et n'est qu'un fichier de notes personnels. -----
+
+
+PARSER :
+    Définir les expressions et les statements :
+        EXPRESSION : Retourne une valeur. Elle est composée de divers opérateurs mais une expression retournera
+                     toujours une valeur.
+			   Une expression peut se composer d'autres expressions.
+			   Exemple : 3 + 9
+        
+	  STATEMENT  : Fait quelque chose. C'est du code qui execute une instruction particulière qui demande à
+                     l'ordinateur de faire quelque chose, il contrôle la logique et la direction du programme.
+			   Un statement ne peut pas être composé d'autres statements mais de plusieurs expressions.
+			   Exemple : var1 = 3 + 9
+	  
+	  La différence MAJEURE sont les effets de bords : Un statement a des effets de bords tandis qu'une expression
+	  n'en a pas.
+
+	SRC : https://www.baeldung.com/cs/expression-vs-statement
+		https://www.quora.com/What-is-the-difference-between-expression-and-statement-in-functional-programming
+
+Définir ces concepts :
+	EXPRESSION possède un type :
+		- Value => Valeur unique
+		- BinaryOperator => 2 valeurs, un opérateur
+		- FunctionCall => Appel de fonction
+
+	STATEMENT possède un type :
+		- Assignment
+		- ConditionalBranch (If/Else)
+		- DefiniteBoucle	  (For)
+		- IndefiniteBoucle  (While)
+		- BoucleInstruction (Continue/Break)
+
+Régles du parser:
+	Typage dynamique (les variables peuvent changer de type)
+	
+
+
+
+
