@@ -53,6 +53,8 @@ TokenStream * new_token_stream(char * str) {
   size_t cursor1 = -1, cursor2;
   size_t len = strlen(str);
 
+  unsigned char in_string = 0;
+
   TokenStream * stream = NULL;
 
   if ((stream = malloc(sizeof(TokenStream))) == NULL) {
@@ -79,7 +81,7 @@ TokenStream * new_token_stream(char * str) {
 
     // ----------- Analyse simple (caractère à caractère)
 
-    if (isspace(str[cursor1])) {
+    if (isspace(str[cursor1]) && !in_string) {
       continue;
     }
 
@@ -103,9 +105,20 @@ TokenStream * new_token_stream(char * str) {
         continue;
       case '\'':
         push_token(stream, (Token){SQUOTE, NULL, cursor1});
+        if (in_string == '\''){
+          in_string = 0;
+        } else if (!in_string) {
+          in_string = '\'';
+        }
         continue;
       case '"':
         push_token(stream, (Token){DQUOTE, NULL, cursor1});
+        printf("DQUOTE\n");
+        if (in_string == '"'){
+          in_string = 0;
+        } else if (!in_string) {
+          in_string = '"';
+        }
         continue;
       case '=':
         push_token(stream, (Token){EQUAL, NULL, cursor1});
@@ -151,6 +164,25 @@ TokenStream * new_token_stream(char * str) {
         continue;
       default:
         break;
+    }
+
+    if (in_string){
+      switch (str[cursor1]) {
+        case ' ':
+          push_token(stream, (Token){SPACE, NULL, cursor1});
+          printf("SPACE\n");
+          continue;
+        case '\t':
+          push_token(stream, (Token){TAB, NULL, cursor1});
+          printf("TAB\n");
+          continue;
+        case '\n':
+          push_token(stream, (Token){CARRIAGE, NULL, cursor1});
+          printf("CARRIAGE\n");
+          continue;
+        default:
+          break;
+      }
     }
 
     // ----------- Analyse complexe (portions de chaines de caractères)

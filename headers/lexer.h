@@ -39,6 +39,9 @@ enum TokenType {
   RBRACE,
   LBRACKET,
   RBRACKET,
+  CARRIAGE,
+  SPACE,
+  TAB,
   END,
 };
 
