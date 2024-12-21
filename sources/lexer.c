@@ -185,7 +185,7 @@ TokenStream * new_token_stream(char * str) {
     strncpy(cpy, str + cursor1, cursor2 - cursor1 + 1);
 
     if (in_string){
-      push_token(stream, (Token){STRING, cpy, cursor1});
+      push_token(stream, (Token){ (in_string == '"') ? D_STRING : S_STRING, cpy, cursor1});
       cursor1 = cursor2;
       continue;
     }
@@ -212,6 +212,8 @@ TokenStream * new_token_stream(char * str) {
       push_token(stream, (Token){TRUE, NULL, cursor1});
     } else if (strcmp(cpy, "false") == 0) {
       push_token(stream, (Token){FALSE, NULL, cursor1});
+    } else if (strcmp(cpy, "not") == 0) {
+      push_token(stream, (Token){NOT, NULL, cursor1});
     } else {
       goto skip;
     }

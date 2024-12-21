@@ -18,8 +18,10 @@ enum TokenType {
   XOR,
   TRUE,
   FALSE,
+  NOT,
   NUMBER,
-  STRING,
+  S_STRING, // Guillemets simples
+  D_STRING, // Guillements doubles
   SEMICOLON,
   COMMA,
   DOT,
