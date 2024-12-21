@@ -1,15 +1,6 @@
-	      
-		
-		  
+tru = 0;
 
-		    
-		      
-			
-
-"Salut à tous
-
-Qu'en dis tu de ça ?  "
-
-
-
-	  
+while (tru <= 10){
+    tru = tru + 1;
+    print('Tru is equals to """""":" ', tru);
+}

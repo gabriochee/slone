@@ -19,6 +19,7 @@ enum TokenType {
   TRUE,
   FALSE,
   NUMBER,
+  STRING,
   SEMICOLON,
   COMMA,
   DOT,
@@ -39,9 +40,6 @@ enum TokenType {
   RBRACE,
   LBRACKET,
   RBRACKET,
-  CARRIAGE,
-  SPACE,
-  TAB,
   END,
 };
 

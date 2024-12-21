@@ -47,7 +47,6 @@ Token * next_token(TokenStream * stream) {
 }
 
 TokenStream * new_token_stream(char * str) {
-  const char keyword_set[] = "if else for while continue break and or xor true false";
   const char reserved_char_set[] = "!\"%'()*+,-./;<=>[]{}";
 
   size_t cursor1 = -1, cursor2;
@@ -81,7 +80,7 @@ TokenStream * new_token_stream(char * str) {
 
     // ----------- Analyse simple (caractère à caractère)
 
-    if (isspace(str[cursor1]) && !in_string) {
+    if (isspace(str[cursor1])) {
       continue;
     }
 
@@ -105,21 +104,20 @@ TokenStream * new_token_stream(char * str) {
         continue;
       case '\'':
         push_token(stream, (Token){SQUOTE, NULL, cursor1});
-        if (in_string == '\''){
+        if (in_string){
           in_string = 0;
-        } else if (!in_string) {
-          in_string = '\'';
+          continue;
         }
-        continue;
+        in_string = '\'';
+        break;
       case '"':
         push_token(stream, (Token){DQUOTE, NULL, cursor1});
-        printf("DQUOTE\n");
-        if (in_string == '"'){
+        if (in_string){
           in_string = 0;
-        } else if (!in_string) {
-          in_string = '"';
+          continue;
         }
-        continue;
+        in_string = '"';
+        break;
       case '=':
         push_token(stream, (Token){EQUAL, NULL, cursor1});
         continue;
@@ -166,31 +164,18 @@ TokenStream * new_token_stream(char * str) {
         break;
     }
 
-    if (in_string){
-      switch (str[cursor1]) {
-        case ' ':
-          push_token(stream, (Token){SPACE, NULL, cursor1});
-          printf("SPACE\n");
-          continue;
-        case '\t':
-          push_token(stream, (Token){TAB, NULL, cursor1});
-          printf("TAB\n");
-          continue;
-        case '\n':
-          push_token(stream, (Token){CARRIAGE, NULL, cursor1});
-          printf("CARRIAGE\n");
-          continue;
-        default:
-          break;
-      }
-    }
-
     // ----------- Analyse complexe (portions de chaines de caractères)
 
-	while (cursor2 < len && !isspace(str[cursor2]) && strchr(reserved_char_set, str[cursor2]) == NULL) {
-  		cursor2++;
+    if (in_string){
+      while (cursor2 < len && str[cursor2 + 1] != in_string) {
+        cursor2++;
+      }
+      cursor1++;
+    } else {
+        while (cursor2 < len && !isspace(str[cursor2 + 1]) && strchr(reserved_char_set, str[cursor2 + 1]) == NULL) {
+            cursor2++;
+        }
     }
-    cursor2--;
 
     char * cpy = NULL;
     if ((cpy = calloc((cursor2 - cursor1 + 1), sizeof(char))) == NULL) {
@@ -199,39 +184,47 @@ TokenStream * new_token_stream(char * str) {
     }
     strncpy(cpy, str + cursor1, cursor2 - cursor1 + 1);
 
-    if (strstr(keyword_set, cpy) != NULL) {
-      if (strcmp(cpy, "if") == 0) {
-      	push_token(stream, (Token){IF, NULL, cursor1});
-      } else if (strcmp(cpy, "else") == 0) {
-      	push_token(stream, (Token){ELSE, NULL, cursor1});
-      } else if (strcmp(cpy, "for") == 0) {
-      	push_token(stream, (Token){FOR, NULL, cursor1});
-      } else if (strcmp(cpy, "while") == 0) {
-      	push_token(stream, (Token){WHILE, NULL, cursor1});
-      } else if (strcmp(cpy, "continue") == 0) {
-      	push_token(stream, (Token){CONTINUE, NULL, cursor1});
-      } else if (strcmp(cpy, "break") == 0) {
-      	push_token(stream, (Token){BREAK, NULL, cursor1});
-      } else if (strcmp(cpy, "and") == 0) {
-      	push_token(stream, (Token){AND, NULL, cursor1});
-      } else if (strcmp(cpy, "or") == 0) {
-      	push_token(stream, (Token){OR, NULL, cursor1});
-      } else if (strcmp(cpy, "xor") == 0) {
-      	push_token(stream, (Token){XOR, NULL, cursor1});
-      } else if (strcmp(cpy, "true") == 0) {
-      	push_token(stream, (Token){TRUE, NULL, cursor1});
-      } else if (strcmp(cpy, "false") == 0) {
-      	push_token(stream, (Token){FALSE, NULL, cursor1});
-      }
-
+    if (in_string){
+      push_token(stream, (Token){STRING, cpy, cursor1});
       cursor1 = cursor2;
-      free(cpy);
       continue;
     }
 
+    if (strcmp(cpy, "if") == 0) {
+      push_token(stream, (Token){IF, NULL, cursor1});
+    } else if (strcmp(cpy, "else") == 0) {
+      push_token(stream, (Token){ELSE, NULL, cursor1});
+    } else if (strcmp(cpy, "for") == 0) {
+      push_token(stream, (Token){FOR, NULL, cursor1});
+    } else if (strcmp(cpy, "while") == 0) {
+      push_token(stream, (Token){WHILE, NULL, cursor1});
+    } else if (strcmp(cpy, "continue") == 0) {
+      push_token(stream, (Token){CONTINUE, NULL, cursor1});
+    } else if (strcmp(cpy, "break") == 0) {
+      push_token(stream, (Token){BREAK, NULL, cursor1});
+    } else if (strcmp(cpy, "and") == 0) {
+      push_token(stream, (Token){AND, NULL, cursor1});
+    } else if (strcmp(cpy, "or") == 0) {
+      push_token(stream, (Token){OR, NULL, cursor1});
+    } else if (strcmp(cpy, "xor") == 0) {
+      push_token(stream, (Token){XOR, NULL, cursor1});
+    } else if (strcmp(cpy, "true") == 0) {
+      push_token(stream, (Token){TRUE, NULL, cursor1});
+    } else if (strcmp(cpy, "false") == 0) {
+      push_token(stream, (Token){FALSE, NULL, cursor1});
+    } else {
+      goto skip;
+    }
+
+    cursor1 = cursor2;
+    free(cpy);
+    continue;
+
+    skip:
+
     unsigned int pos = 0;
 
-    while (isdigit(cpy[pos]) && pos++ < (cursor2 - cursor1 + 1));
+    while (isdigit(cpy[pos]) && ++pos < (cursor2 - cursor1 + 1));
     if (cursor2 - cursor1 + 1 == pos){
        push_token(stream, (Token){NUMBER, cpy, cursor1});
        cursor1 = cursor2;
