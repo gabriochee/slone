@@ -6,150 +6,135 @@
 // Un programme peut se composer de plusieurs blocs contenant eux mêmes plusieurs instructions / blocs.
 // Un chunk peut être soit un bloc soit une instruction.
 // Ne serait il pas mieux d'utiliser un bloc et de lui ajouter un attribut indiquant s'il possède une simple
-// instruction ou plusieurs autres blocs ?
-
-typedef struct Block Block;
-typedef struct Instruction Instruction;
+// Afin de préciser la syntaxe de notre langage de programmation, nous utiliserons la notation Backus Naur.
+//
+// 1. Types élémentaires
+//      <symbol>   ::= ensemble des caractères de la table ASCII.
+//
+//      <letter>   ::= ensemble des caractères de la table ASCII chiffres, espaces et operateurs exclus.
+//
+//      <digit>    ::= 0|1|2|3|4|5|6|7|8|9|
+//
+//      <number>   ::= <digit> | <digit><number> | <number>.<number>
+//
+//      <bool>     ::= true | false
+//
+//      <char>     ::= '<symbol>'
+//
+//      <word>     ::= <letter> | <letter><word>
+//
+//      <string>   ::= "<symbol>" | "<word>" | '<word>'
+//
+//      <variable> ::= <word> | <number><word> | <word><number>
+//
+// 2. Structure de programme
+//      <value>           ::= <number> | <bool> | <char> | <string> | <variable>
+//
+//      <binary_operator> ::= +|-|*|/|%|<|>|<=|>=|==|!=|and|or|xor
+//
+//      <unary_operator>  ::= not
+//
+//      <expression>      ::= <value> | <expression><binary_operator><expression> | <unary_operator><expression> | (<expression>)
+//
+//      <if>              ::= if (<expression>) {<program>}
+//
+//      <else>            ::= <if> else {<program>} | <if> else <if>
+//
+//      <for>             ::= for (<statement>,<expression>,<statement>){<program>}
+//
+//      <while>           ::= while (<expression>){<program>}
+//
+//      <continue>        ::= continue
+//
+//      <break>           ::= break
+//
+//      <assignement>     ::= <variable>=<expression>
+//      
+//      <statement>       ::= <assignment>|<if>|<else>|<for>|<while>|<continue>|<break>|{<program>}
+//
+//      <instruction>     ::= <expression>; | <statement>
+//
+//      <program>         ::= <instruction> | <instruction><program>
+//
+// La notation Backus-Naur permet d'expliciter la syntaxe du langage de programmation et ainsi nous guider sur la construction des différents objets pouvant constituer notre arbre de syntaxe.
+//
+// Notre parser utilise la méthode de consrtuction d'arbre syntaxique par descente récursive.
 
 typedef struct Value Value;
-typedef struct BinaryOperator BinaryOperator; // à voir pour le type de retour !
-typedef struct UnaryOperator UnaryOperator;
-
-typedef struct Assignement Assignement;
-typedef struct ConditionalBranch ConditionalBranch;
-
-typedef enum InstructionType InstructionType;
-typedef enum BlockType BlockType;
-typedef enum ExpressionType ExpressionType;
-typedef enum StatementType StatementType;
+typedef struct Variable Variable;
+typedef struct Expression Expression;
+typedef struct Instruction Instruction;
+typedef struct Program Program;
 
 typedef enum Type Type;
-typedef enum BinaryOperatorType BinaryOperatorType;
-typedef enum UnaryOperatorType UnaryOperatorType;
+typedef enum ExpressionType ExpressionType;
+typedef enum InstructionType InstructionType;
 
 enum Type{
-  INTEGER, // Type valise pour short jusqu'à unsigned long long
-  FLOAT, // Type valise pour float, double, long double etc..
-  BOOLEAN,
+  INTEGER,
+  FLOAT,
+  BOOL,
   CHAR,
   STRING,
 };
 
-enum InstructionType {
-  STATEMENT,
+enum ExpressionType{
+  VALUE,
+  EXPR,
+  BINARY_OPERATION,
+  UNARY_OPERATION,
+  END_OF_EXPRESSION,
+};
+
+enum InstructionType{
   EXPRESSION,
+  STATEMENT,
 };
 
-enum ExpressionType {
-  VALUE, // Compte aussi pour les variables ?
-  BINARY_OPERATOR,
-  //FUNCTION_CALL, Faisabilité à voir
-};
-
-enum StatementType {
-  ASSIGNMENT,
-  CONDITIONAL_BRANCH,
-  DEFINITE_BOUCLE,
-  INDEFINITE_BOUCLE,
-  BOUCLE_CONTROL,
-};
-
-enum BinaryOperatorType {
-  // Booléen
-  LOWER_THAN,
-  LOWER_THAN_EQUAL,
-  EQUALS,
-  GREATER_THAN,
-  GREATER_THAN_EQUAL,
-  // Arithmétique
-  ADD,
-  SUBSTRACT,
-  MULTIPLY,
-  DIVIDE,
-};
-
-enum UnaryOperatorType {
-  // Booléen
-  L_NOT
-};
-
-struct Instruction {
-  InstructionType type;
-};
-
-enum BlockType {
-	INSTRUCTION,
-  BLOCK
-};
-
-struct Block {
-  BlockType type;
-	unsigned int current;
-  union {
-    Instruction instruction;
-    Block * blocks;
-  };
-};
-
-struct Value {
+struct Value{
   Type type;
   union {
-    char char_value;
-    unsigned char uchar_value;
-
-    signed short short_value;
-    unsigned short ushort_value;
-    signed int int_value;
-    unsigned int uint_value;
-    signed long long_value;
-    unsigned long ulong_value;
-    signed long long long_long_value;
-    unsigned long long ulong_long_value;
-    float float_value;
-    double double_value;
-
+    unsigned long long unsigned_integer_value;
+    signed long long integer_value;
+    long double float_value;
     unsigned char bool_value;
-
+    char char_value;
     char * string_value;
   };
 };
 
-struct BinaryOperator {
-  BinaryOperatorType type;
-  Value left, right;
-};
-
-struct UnaryOperator {
-  UnaryOperatorType type;
-  Value value;
-};
-
-struct Assignement {
+struct Variable{
+  Type type;
   char * name;
-  Value value;
 };
 
-struct ConditionalBranch {
-  BinaryOperator comparison;
-  Block true, false;
+struct Expression{
+  ExpressionType type;
+  union{
+    Value * value;
+  };
 };
 
-/*
+struct Instruction{
+  InstructionType type;
+  union {
+    Expression * expression;
+  };
+};
 
-Block {
-	Instruction;
-	Block{
-		Instruction;
-		Instruction;
-		Instruction;
-		Instruction;
-	},
-	Block{
+struct Program{
+  unsigned int instruction_capacity;
+  unsigned int current_instruction;
+  Instruction ** instructions;
+};
 
-	},
-	...
-}
+Program * parse(TokenStream * stream);
 
- */
+void set_program(Program * program);
+void add_instruction(Program * program, Instruction * instruction);
+
+Expression * parse_expression(TokenStream * stream);
+
+int is_token_expression(Token * token);
 
 #endif

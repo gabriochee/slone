@@ -15,7 +15,7 @@ void set_token_stream(TokenStream * stream) {
 }
 
 void push_token(TokenStream * stream, Token token) {
-  if (stream->current == stream->stream_capacity) {
+  if (stream->current >= stream->stream_capacity) {
     stream->tokens = realloc(stream->tokens, (stream->stream_capacity *= 2) * sizeof(Token));
   }
 
@@ -38,9 +38,13 @@ void rewind_token_stream(TokenStream * stream) {
   stream->current = 0;
 }
 
+Token * current_token(TokenStream * stream){
+  return stream->tokens + stream->current;
+}
+
 Token * next_token(TokenStream * stream) {
-  Token * next = stream->tokens + stream->current;
-  if (stream->current < stream->stream_capacity && stream->tokens[stream->current].type != END) {
+  Token * next = current_token(stream);
+  if (stream->current < stream->stream_capacity && current_token(stream)->type != END) {
     stream->current++;
   }
   return next;
@@ -99,9 +103,6 @@ TokenStream * new_token_stream(char * str) {
       case '.':
         push_token(stream, (Token){DOT, NULL, cursor1});
         continue;
-      case '!':
-        push_token(stream, (Token){EXCLAM, NULL, cursor1});
-        continue;
       case '\'':
         push_token(stream, (Token){SQUOTE, NULL, cursor1});
         if (in_string){
@@ -141,6 +142,9 @@ TokenStream * new_token_stream(char * str) {
         continue;
       case '%':
     	push_token(stream, (Token){PERCENT, NULL, cursor1});
+        continue;
+      case '!':
+        push_token(stream, (Token){EXCLAM, NULL, cursor1});
         continue;
       case '(':
         push_token(stream, (Token){LPAREN, NULL, cursor1});

@@ -30,12 +30,12 @@ enum TokenType {
   EQUAL,
   GREATER,
   LOWER,
-  EXCLAM,
   PLUS,
   MINUS,
   STAR,
   SLASH,
   PERCENT,
+  EXCLAM,
   LPAREN,
   RPAREN,
   LBRACE,
@@ -64,6 +64,7 @@ void push_token(TokenStream * stream, Token token);
 void free_token_stream(TokenStream * stream);
 void rewind_token_stream(TokenStream * stream);
 
+Token * current_token(TokenStream * stream);
 Token * next_token(TokenStream * stream);
 
 #endif

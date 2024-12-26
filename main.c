@@ -3,6 +3,8 @@
 #include <string.h>
 
 #include "headers/lexer.h"
+#include "headers/lexer_test.h"
+#include "headers/parser.h"
 
 int main(const int argc, const char * argv[]){
 
@@ -37,6 +39,10 @@ int main(const int argc, const char * argv[]){
   fread(file_content, sizeof(char), file_size, file);
 
   TokenStream * stream = new_token_stream(file_content);
+
+  //test_lexer(file_content);
+
+  parse(stream);
 
   fclose(file);
   free_token_stream(stream);

@@ -33,9 +33,72 @@ Définir ces concepts :
 		- BoucleInstruction (Continue/Break)
 
 Régles du parser:
+
+	Méthode de parcours : Descente récursive.
+
+	n = 9;
+
+PARSE (){
+  next_block = PARSE(NextToken)
+  
+}
+
+PARSE "NAME" n <--- C'est un assignement où j'assigne la variable n
+|                 |
+--> PARSE "EQUAL" = <--- C'est bien une expression donc je renvoie un ASSIGNMENT
+    |                  |
+    --> PARSE "NUMBER" 9 <----- Je suis le dernier donc je renvoie VALUE
+        |		      |
+        --> PARSE "SEMICOLON" |
+
+if (n == 9) {
+	...
+}
+
+Syntaxe IF CONDITION [BLOC SI] ? [BLOC SINON]
+
+PARSE IF
+|
+--> PARSE EXPRESSION [ 
+    PARSE (
+    |
+    --> PARSE NAME n <----------- Ce qui vient après est une comparaison avec n !
+        |			|
+        --> PARSE = <------------ J'ai un égal qui suit, c'est donc une comparaison
+            |			|
+            --> PARSE = <-------- J'ai une valeur qui suit, c'est bon valide.
+                |               |
+                --> PARSE VALUE 9 <--- Je renvoie la value 9
+                    |		     |
+                    --> PARSE ) -----| J'arrive à la fin de l'expression
+    ]
+|
+--> PARSE BLOC [
+ ...
+]
+
 	Typage dynamique (les variables peuvent changer de type)
 	
+	Un bloc uniquement composé d'expressions est lui même une expression.
+	Un bloc avec au moins un statement est un statement.
 
+	() = Expression avec valeur de retour X PAS DE STATEMENTS LA DEDANS !!!
+	{} = Nouveau bloc avec nouveau scope, STATEMENT
 
+	STATEMENTS
+	  ASSIGNMENT
+	   Interdit de mettre un statement comme valeur
+	  
+	  IF
+	   Interdit de mettre un statement dans la condition
+
+	  BOUCLE FOR
+	   Interdit de mettre des statements dans la condition et dans l'instruction de MAJ
+	
+	  BOUCLE WHILE
+	   Interdit de mettre un statement dans la condition
+	
+	EXPRESSIONS
+	  Une expression ne doit PAS contenir de statements
 
 

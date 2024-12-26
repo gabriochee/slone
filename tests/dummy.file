@@ -1,6 +1,1 @@
-tru = 0;
-
-while (tru <= 10){
-    tru = tru + 1;
-    print('Tru is equals to """""":" ', tru);
-}
+.167589;
