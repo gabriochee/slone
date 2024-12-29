@@ -40,9 +40,13 @@ int main(const int argc, const char * argv[]){
 
   TokenStream * stream = new_token_stream(file_content);
 
-  //test_lexer(file_content);
+  TokenStack * ts = infix_to_postfix(stream);
 
-  parse(stream);
+  for (int i = 0; i < ts->current; i++){
+    print_token(ts->tokens[i]);
+  }
+
+  //parse(stream);
 
   fclose(file);
   free_token_stream(stream);

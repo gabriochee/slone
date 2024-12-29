@@ -5,13 +5,7 @@
 #include "../headers/lexer_test.h"
 #include "../headers/lexer.h"
 
-void test_lexer(char * file_content){
-  TokenStream * stream = NULL;
-  Token * token = NULL;
-
-  stream = new_token_stream(file_content);
-
-  while ((token = next_token(stream))->type != END){
+void print_token(Token * token) {
     switch(token->type){
       case NAME:
         printf("NAME : %s\n", token->value);
@@ -55,7 +49,7 @@ void test_lexer(char * file_content){
       case NUMBER:
         printf("NUMBER : %s\n", token->value);
         break;
-      case S_STRING: 
+      case S_STRING:
         printf("S_STRING : %s\n", token->value);
         break;
       case D_STRING:
@@ -88,8 +82,14 @@ void test_lexer(char * file_content){
       case PLUS:
         printf("PLUS\n");
         break;
+      case U_PLUS:
+        printf("U_PLUS\n");
+        break;
       case MINUS:
         printf("MINUS\n");
+        break;
+      case U_MINUS:
+        printf("U_MINUS\n");
         break;
       case STAR:
         printf("STAR\n");
@@ -128,5 +128,16 @@ void test_lexer(char * file_content){
         printf("UNKNOWN\n");
         break;
     }
+
+}
+
+void test_lexer(char * file_content){
+  TokenStream * stream = NULL;
+  Token * token = NULL;
+
+  stream = new_token_stream(file_content);
+
+  while ((token = next_token(stream))->type != END){
+    print_token(token);
   }
 }

@@ -4,13 +4,19 @@
 #include "../headers/lexer.h"
 #include "../headers/parser.h"
 
-#define VALUE_MASK               0b00000000000001111111
-#define NUMBER_MASK              0b00000000000000000011
-#define STRING_MASK              0b00000000000000110000
-#define BOOLEAN_VALUE_MASK       0b00000000000011000000
-#define BOOLEAN_OPERATOR_MASK    0b00000000111100000000
-#define ARITHMETIC_OPERATOR_MASK 0b00011111000000000000
-#define COMPARISON_OPERATOR_MASK 0b11100000000000000000
+#include "../headers/lexer_test.h"
+
+#define VALUE_MASK               0b00000000000000000011111111
+#define NUMBER_MASK              0b00000000000000000000000110
+#define STRING_MASK              0b00000000000000000001100000
+#define BOOLEAN_VALUE_MASK       0b00000000000000000110000000
+#define BOOLEAN_OPERATOR_MASK    0b00000000000001111000000000
+#define ARITHMETIC_OPERATOR_MASK 0b00000011111110000000000000
+#define COMPARISON_OPERATOR_MASK 0b00111100000000000000000000
+#define PARENTHESES_MASK         0b11000000000000000000000000
+
+#define BINARY_OPERATOR_MASK     0b00111111111000111000000000
+#define UNARY_OPERATOR_MASK      0b00000000000111000000000000
 
 void set_program(Program * program){
   program->instruction_capacity = 1;
@@ -31,114 +37,236 @@ void add_instruction(Program * program, Instruction * instruction) {
 int is_token_expression(Token * token){
   // La fonction ne renvoie pas seulement si le token actuel peut être considéré comme une expression,
   // mais il renvoie aussi quel type d'après ce plan selon chaque bit (La position suit le petit boutisme):
-  // UNSIGNED SHORT = 0000 0000 0000 0000
-  // bit n°1 = NUMBER                           ] Ensemble des valeurs
-  // bit n°2 = DOT                              ]
-  // bit n°3 = SQUOTE                           ]
-  // bit n°4 = DQUOTE                           ]
-  // bit n°5 = S_STRING | Ensemble des strings  ]
-  // bit n°6 = D_STRING |                       ]
-  // bit n°7 = TRUE     ) Ensemble des booléens ]
-  // bit n°8 = FALSE    )                       ]
-  // bit n°9 = AND      } Ensemble des opérateurs booléens
-  // bit n°10 = OR       }
-  // bit n°11 = XOR      }
-  // bit n°12 = NOT      }
-  // bit n°13 = PLUS    ] Ensemble des opérateurs arithmétiques
-  // bit n°14 = MINUS   ]
-  // bit n°15 = STAR    ]
-  // bit n°16 = SLASH   ]
-  // bit n°17 = PERCENT ]
-  // bit n°18 = LOWER   } Ensemble des comparaisons (égal est exclu pour le cas spécifique de l'assignation.)
-  // bit n°19 = GREATER }
-  // bit n°20 = EXCLAM  }
-  // bit n°21 = LPAREN
+  // bit n°1 = NAME                             ] Ensemble des valeurs
+  // bit n°2 = NUMBER                           ]
+  // bit n°3 = DOT                              ]
+  // bit n°4 = SQUOTE                           ]
+  // bit n°5 = DQUOTE                           ]
+  // bit n°6 = S_STRING | Ensemble des strings  ]
+  // bit n°7 = D_STRING |                       ]
+  // bit n°8 = TRUE     ) Ensemble des booléens ]
+  // bit n°9 = FALSE    )                       ]
+  // bit n°10 = AND     } Ensemble des opérateurs booléens
+  // bit n°11 = OR      }
+  // bit n°12 = XOR     }                                       | Opérateurs unaires
+  // bit n°13 = NOT     }                                       |
+  // bit n°14 = U_PLUS  ] Ensemble des opérateurs arithmétiques |
+  // bit n°15 = U_MINUS ]
+  // bit n°16 = PLUS    ]
+  // bit n°17 = MINUS   ]
+  // bit n°18 = STAR    ]
+  // bit n°19 = SLASH   ]
+  // bit n°20 = PERCENT ]
+  // bit n°21 = LOWER   } Ensemble des comparaisons (égal est exclu pour le cas spécifique de l'assignation.)
+  // bit n°22 = GREATER }
+  // bit n°23 = EXCLAM  }
+  // bit n°24 = EQUAL   }
+  // bit n°25 = LPAREN  | Ensemble des parenthèses
+  // bit n°26 = RPAREN  |
 
   int mask = 0;
 
-  mask |= (token->type == NUMBER)         |
-          (token->type == DOT)      << 1  |
-          (token->type == SQUOTE)   << 2  |
-          (token->type == DQUOTE)   << 3  |
-          (token->type == S_STRING) << 4  |
-          (token->type == D_STRING) << 5  |
-          (token->type == TRUE)     << 6  |
-          (token->type == FALSE)    << 7  |
-          (token->type == AND)      << 8  |
-          (token->type == OR)       << 9  |
-          (token->type == XOR)      << 10 |
-          (token->type == NOT)      << 11 |
-          (token->type == PLUS)     << 12 |
-          (token->type == MINUS)    << 13 |
-          (token->type == STAR)     << 14 |
-          (token->type == SLASH)    << 15 |
-          (token->type == PERCENT)  << 16 |
-          (token->type == LOWER)    << 17 |
-          (token->type == GREATER)  << 18 |
-          (token->type == EXCLAM)   << 20 |
-          (token->type == LPAREN)   << 21;
+  mask =  (token->type == NAME)           |
+          (token->type == NUMBER)   << 1  |
+          (token->type == DOT)      << 2  |
+          (token->type == SQUOTE)   << 3  |
+          (token->type == DQUOTE)   << 4  |
+          (token->type == S_STRING) << 5  |
+          (token->type == D_STRING) << 6  |
+          (token->type == TRUE)     << 7  |
+          (token->type == FALSE)    << 8  |
+          (token->type == AND)      << 9  |
+          (token->type == OR)       << 10 |
+          (token->type == XOR)      << 11 |
+          (token->type == NOT)      << 12 |
+          (token->type == U_PLUS)   << 13 |
+          (token->type == U_MINUS)  << 14 |
+          (token->type == PLUS)     << 15 |
+          (token->type == MINUS)    << 16 |
+          (token->type == STAR)     << 17 |
+          (token->type == SLASH)    << 18 |
+          (token->type == PERCENT)  << 19 |
+          (token->type == LOWER)    << 20 |
+          (token->type == GREATER)  << 21 |
+          (token->type == EXCLAM)   << 23 |
+          (token->type == LPAREN)   << 24 |
+          (token->type == RPAREN)   << 25;
 
   return mask;
 }
 
+short operator_precedence(Token * token) {
+  short mask = 0;
+  mask =  (token->type == LPAREN)                                                            |
+          (token->type == OR)                                                           << 1 |
+          (token->type == AND)                                                          << 2 |
+          (token->type == XOR)                                                          << 3 |
+          (token->type == AND)                                                          << 4 |
+          ((token->type == EXCLAM) || (token->type == EQUAL))                           << 5 |
+          ((token->type == GREATER) || (token->type == LOWER))                          << 6 |
+          ((token->type == PLUS) || (token->type == MINUS))                             << 7 |
+          ((token->type == STAR) || (token->type == PERCENT) || (token->type == SLASH)) << 8 |
+          ((token->type == U_PLUS) || (token->type == U_MINUS))                         << 9 ;
+
+  return mask;
+}
+
+TokenStack * new_token_stack() {
+  TokenStack * stack = malloc(sizeof(TokenStack));
+
+  if (stack != NULL) {
+    stack->is_empty = 1;
+    stack->current= 0;
+    stack->token_capacity = 1;
+    stack->tokens = malloc(sizeof(Token *));
+  }
+
+  return stack;
+}
+
+Token * pop_token_stack(TokenStack * token_stack) {
+  if (token_stack->current > 0) {
+    return token_stack->tokens[--token_stack->current];
+  }
+
+  token_stack->is_empty = 1;
+  return token_stack->tokens[token_stack->current];
+}
+
+Token * top_token_stack(TokenStack * token_stack) {
+  if (token_stack->current > 0) {
+    return token_stack->tokens[token_stack->current-1];
+  }
+
+  return token_stack->tokens[token_stack->current];
+}
+
+void push_token_stack(TokenStack * token_stack, Token * token) {
+  if (token_stack->current >= token_stack->token_capacity) {
+    token_stack->tokens = realloc(token_stack->tokens, (token_stack->token_capacity *= 2) * sizeof(Token *));
+  }
+
+  if (token_stack->tokens != NULL) {
+    token_stack->is_empty = 0;
+    token_stack->tokens[token_stack->current++] = token;
+  }
+}
+void free_token_stack(TokenStack * token_stack) {
+  if (token_stack->tokens != NULL) {
+    free(token_stack->tokens);
+  }
+
+  free(token_stack);
+}
+
+// parse_expression cas :
+// A UTILISER : Notation Polonaise + Shunting Yard Algorithm
+// Explication Notation Polonaise = n1 n2 opérateur
+// Exemple : 1 + 2 * 3 = 1 2 3 * +
+//
+// Shunting Yard Algorithm :
+// 2 piles : Sortie / opérateurs
+// Toutes les valeurs (variables, nombres, values etc..) vont directement dans la sortie
+//
+// Pour les opérateurs :
+//   Si la pile est vide ou que l'opérateur au sommet de la pile a une précédence inférieure à notre opérateur ou
+//   que c'est une parenthèse ouverte, alors on empile notre opérateur sur la pile des opérateurs.
+//
+//   Cependant, si notre opérateur à une précédence inférieure ou égale à l'opérateur au sommet de la pile, alors on
+//   dépile l'opérateur du sommet de la pile des opérateurs vers la pile de sortie et on empile notre opérateur sur
+//   la pile des opérateurs.
+//
+//  Finalement, si notre opérateur est un parenthèse fermante, alors on dépile toutes les valeurs de la pile des
+//  opérateurs vers la pile de sortie jusqu'a que l'on rencontre une parenthèse ouvrante dans la pile des opérateurs.
+//
+//  9 * (4 + 5) * 15 = 81 * 15 = 1215
+// SORTIE : 9 4 5 + * 15 *
+// OPERAS :
+//
+//  9 * 4 + 5 * 15 = 111
+// SORTIE : 9 4 * 5 15 * +
+// OPERAS :
+//
+//  1 + 4 * -5
+// SORTIE : 1 4 5 - * +
+// OPERAS :
+//  9 * 5 / 10;
+//
+// SORTIE : 9 5 * 10 /
+// OPERAS :
+//
+// Pour faire une structure en arbre, on lit de droite à gauche
+
+TokenStack * infix_to_postfix(TokenStream * stream) {
+  Token * token = NULL;
+  TokenStack * operator_stack = NULL;
+  TokenStack * output_stack = NULL;
+
+  if ((operator_stack = new_token_stack()) == NULL) {
+    fprintf(stderr, "ERREUR::PARSER::PARSE_EXPRESSION::INFIX_TO_POSTFIX::ALLOCATION_1\n\nErreur d'allocation de la pile des opérateurs.\n");
+    return NULL;
+  }
+
+  if ((output_stack = new_token_stack()) == NULL) {
+    free_token_stack(operator_stack);
+    fprintf(stderr, "ERREUR::PARSER::PARSE_EXPRESSION::INFIX_TO_POSTFIX::ALLOCATION_2\n\nErreur d'allocation de la pile des opérateurs.\n");
+    return NULL;
+  }
+
+  int mask;
+
+  while ((mask = is_token_expression(token = next_token(stream)))) {
+    if (mask & VALUE_MASK) {
+      push_token_stack(output_stack, token);
+    } else if (token->type == LPAREN){
+      push_token_stack(operator_stack, token);
+    } else if (token->type == RPAREN) {
+      while (!operator_stack->is_empty && top_token_stack(operator_stack)->type != LPAREN) {
+        push_token_stack(output_stack, pop_token_stack(operator_stack));
+      }
+      if (top_token_stack(operator_stack)->type != LPAREN) {
+        free_token_stack(operator_stack);
+        free_token_stack(output_stack);
+        return NULL;
+      }
+      pop_token_stack(operator_stack);
+    } else if (operator_stack->is_empty) {
+      push_token_stack(operator_stack, token);
+    } else if (operator_precedence(token) > operator_precedence(top_token_stack(operator_stack))) {
+      push_token_stack(operator_stack, token);
+    } else {
+      push_token_stack(output_stack, pop_token_stack(operator_stack));
+      push_token_stack(operator_stack, token);
+    }
+  }
+
+  while (!operator_stack->is_empty) {
+    push_token_stack(output_stack, pop_token_stack(operator_stack));
+  }
+
+  return output_stack;
+}
+
 Expression * parse_expression(TokenStream * stream){
-  Token * token = next_token(stream);
-  Expression * next = NULL;
-  Expression * current = malloc(sizeof(Expression));
+  TokenStack * postfix_expression = NULL;
+  Token * top_token = NULL;
 
-  if (token->type == SEMICOLON || token->type == RPAREN){
-    current->type = END_OF_EXPRESSION;
-    return current;
-  } else if (token->type == SQUOTE || token->type == DQUOTE){
-    return parse_expression(stream);
+  if ((postfix_expression = infix_to_postfix(stream)) == NULL) {
+    return NULL;
   }
-  
-  next = parse_expression(stream);
 
-  if (next->type == END_OF_EXPRESSION){
-    int expression_mask = is_token_expression(token);
+  while (!postfix_expression->is_empty) {
+    top_token = pop_token_stack(postfix_expression);
+    if (top_token->type & VALUE_MASK) {
 
-    if (expression_mask & VALUE_MASK){
+    } else if (top_token->type & BINARY_OPERATOR_MASK) {
 
-      current->type = VALUE;
-      current->value = malloc(sizeof(Value));
+    } else if (top_token->type & UNARY_OPERATOR_MASK) {
 
-      if (expression_mask & STRING_MASK){
-        if (token->value[1] == '\0'){
-          current->value->char_value = *(token->value);
-          current->value->type = CHAR;
-        } else {
-          current->value->string_value = token->value;
-          current->value->type = STRING;
-        }
-      } else if (expression_mask & BOOLEAN_VALUE_MASK){
-          current->value->bool_value = (token->type == TRUE);
-          current->value->type = BOOL;
-      } else if (expression_mask & NUMBER_MASK){
-          current->value->unsigned_integer_value = strtoull(token->value, NULL, 10);
-          current->value->type = INTEGER;
-      }
-
-      return current;
-    } else if (next->type & (ARITHMETIC_OPERATOR_MASK | BOOLEAN_OPERATOR_MASK | COMPARISON_OPERATOR_MASK)){
-      // GERER ERREUR !
-    }
-
-  } else if (next->type == VALUE){
-    if (token->type == DOT && next->value->type == INTEGER){
-      current->type = VALUE;
-      current->value = malloc(sizeof(Value));
-      current->value->type = FLOAT;
-      current->value->float_value = strtold(token->value, NULL);
-      while (current->value->float_value > 1.0){
-        current->value->float_value /= 10.0;
-      }
-
-      return current;
     }
   }
 
-  return current;
+  return NULL;
 }
 
 Program * parse(TokenStream * stream){
@@ -147,7 +275,7 @@ Program * parse(TokenStream * stream){
   if ((program = malloc(sizeof(Program))) == NULL) {
     fprintf(stderr, "ERREUR::PARSER::ALLOCATION_1\n\nL'allocation mémoire de l'arbre de syntaxe a échouée.\n");
     return NULL;
-  };
+  }
 
   set_program(program);
 
@@ -163,30 +291,7 @@ Program * parse(TokenStream * stream){
     instruction->type = EXPRESSION;
     instruction->expression = parse_expression(stream);
     add_instruction(program, instruction);
-
-    if (program->instructions[0]->type == EXPRESSION){
-      switch(program->instructions[0]->expression->value->type){
-        case INTEGER:
-          printf("INTEGER : %llu\n", program->instructions[0]->expression->value->unsigned_integer_value);
-          break;
-        case FLOAT:
-          printf("FLOAT : %Lf\n", program->instructions[0]->expression->value->float_value);
-          break;
-        case BOOL:
-          printf("%s\n", program->instructions[0]->expression->value->bool_value ? "TRUE" : "FALSE");
-          break;
-        case CHAR:
-          printf("CHAR : %c\n", program->instructions[0]->expression->value->char_value);
-          break;
-        case STRING:
-          printf("STRING : %s\n", program->instructions[0]->expression->value->string_value);
-          break;
-        default:
-          break;
-      }
-    }
   }
-
 
   return NULL;
 }

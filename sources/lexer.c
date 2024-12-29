@@ -5,6 +5,8 @@
 
 #include "../headers/lexer.h"
 
+#include "../headers/lexer_test.h"
+
 void set_token_stream(TokenStream * stream) {
   // Permet d'initialiser un flux de tokens.
   if (stream != NULL) {
@@ -36,6 +38,18 @@ void free_token_stream(TokenStream * stream) {
 
 void rewind_token_stream(TokenStream * stream) {
   stream->current = 0;
+}
+
+Token * get_token(TokenStream * stream, int position) {
+  if (position > 0) {
+    if (position <= stream->current) {
+      return stream->tokens + position;
+    }
+  } else if (stream->current + position >= 0) {
+    return stream->tokens + stream->current + position;
+  }
+
+  return NULL;
 }
 
 Token * current_token(TokenStream * stream){
@@ -129,10 +143,18 @@ TokenStream * new_token_stream(char * str) {
     	push_token(stream, (Token){LOWER, NULL, cursor1});
         continue;
       case '+':
-    	push_token(stream, (Token){PLUS, NULL, cursor1});
+        if (get_token(stream, -1)->type == NUMBER || get_token(stream, -1)->type == NAME || get_token(stream, -1)->type == RPAREN) {
+    	    push_token(stream, (Token){PLUS, NULL, cursor1});
+        } else {
+    	    push_token(stream, (Token){U_PLUS, NULL, cursor1});
+        }
         continue;
       case '-':
-    	push_token(stream, (Token){MINUS, NULL, cursor1});
+        if (get_token(stream, -1)->type == NUMBER || get_token(stream, -1)->type == NAME || get_token(stream, -1)->type == RPAREN) {
+    	    push_token(stream, (Token){MINUS, NULL, cursor1});
+        } else {
+    	    push_token(stream, (Token){U_MINUS, NULL, cursor1});
+        }
         continue;
       case '*':
     	push_token(stream, (Token){STAR, NULL, cursor1});

@@ -1,6 +1,8 @@
 #ifndef LEXER_H
 #define LEXER_H
 
+#define OPERATOR_PRECEDENCE 8
+
 typedef enum TokenType TokenType;
 typedef struct Token Token;
 typedef struct TokenStream TokenStream;
@@ -31,7 +33,9 @@ enum TokenType {
   GREATER,
   LOWER,
   PLUS,
+  U_PLUS, // Plus unaire
   MINUS,
+  U_MINUS, // Plus unaire
   STAR,
   SLASH,
   PERCENT,
@@ -64,6 +68,7 @@ void push_token(TokenStream * stream, Token token);
 void free_token_stream(TokenStream * stream);
 void rewind_token_stream(TokenStream * stream);
 
+Token * get_token(TokenStream * stream, int position);
 Token * current_token(TokenStream * stream);
 Token * next_token(TokenStream * stream);
 

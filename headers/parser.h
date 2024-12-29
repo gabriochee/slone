@@ -70,6 +70,8 @@ typedef enum Type Type;
 typedef enum ExpressionType ExpressionType;
 typedef enum InstructionType InstructionType;
 
+typedef struct TokenStack TokenStack;
+
 enum Type{
   INTEGER,
   FLOAT,
@@ -128,13 +130,31 @@ struct Program{
   Instruction ** instructions;
 };
 
+struct TokenStack{
+  unsigned char is_empty;
+  unsigned int current;
+  unsigned int token_capacity;
+  Token ** tokens;
+};
+
 Program * parse(TokenStream * stream);
+
+Expression * parse_expression(TokenStream * stream);
+
+TokenStack * infix_to_postfix(TokenStream * stream);
+
+Token * pop_token_stack(TokenStack * token_stack);
+Token * top_token_stack(TokenStack * token_stack);
+
+TokenStack * new_token_stack();
 
 void set_program(Program * program);
 void add_instruction(Program * program, Instruction * instruction);
 
-Expression * parse_expression(TokenStream * stream);
+void push_token_stack(TokenStack * token_stack, Token * token);
+void free_token_stack(TokenStack * token_stack);
 
 int is_token_expression(Token * token);
+short operator_precendence(Token * token);
 
 #endif
