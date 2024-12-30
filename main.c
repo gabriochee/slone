@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,6 +6,7 @@
 #include "headers/lexer.h"
 #include "headers/lexer_test.h"
 #include "headers/parser.h"
+#include "headers/parser_test.h"
 
 int main(const int argc, const char * argv[]){
 
@@ -42,8 +44,10 @@ int main(const int argc, const char * argv[]){
 
   TokenStack * ts = infix_to_postfix(stream);
 
-  for (int i = 0; i < ts->current; i++){
-    print_token(ts->tokens[i]);
+  Expression * expression = parse_expression(ts);
+
+  if (expression != NULL) {
+    print_tree(expression);
   }
 
   //parse(stream);

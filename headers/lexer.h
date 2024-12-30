@@ -9,6 +9,8 @@ typedef struct TokenStream TokenStream;
 
 enum TokenType {
   NAME,
+  NUMBER,
+  FLOATING_NUMBER,
   IF,
   ELSE,
   FOR,
@@ -21,17 +23,19 @@ enum TokenType {
   TRUE,
   FALSE,
   NOT,
-  NUMBER,
   S_STRING, // Guillemets simples
   D_STRING, // Guillements doubles
   SEMICOLON,
   COMMA,
   DOT,
-  SQUOTE,
-  DQUOTE,
+  ASSIGN,
+  EXCLAM,
   EQUAL,
+  UNEQUAL,
   GREATER,
+  GREATER_EQUAL,
   LOWER,
+  LOWER_EQUAL,
   PLUS,
   U_PLUS, // Plus unaire
   MINUS,
@@ -39,7 +43,6 @@ enum TokenType {
   STAR,
   SLASH,
   PERCENT,
-  EXCLAM,
   LPAREN,
   RPAREN,
   LBRACE,
@@ -67,6 +70,7 @@ void set_token_stream(TokenStream * stream);
 void push_token(TokenStream * stream, Token token);
 void free_token_stream(TokenStream * stream);
 void rewind_token_stream(TokenStream * stream);
+void append_value(Token * token, char * value);
 
 Token * get_token(TokenStream * stream, int position);
 Token * current_token(TokenStream * stream);

@@ -49,6 +49,9 @@ void print_token(Token * token) {
       case NUMBER:
         printf("NUMBER : %s\n", token->value);
         break;
+      case FLOATING_NUMBER:
+        printf("FLOATING_NUMBER : %s\n", token->value);
+        break;
       case S_STRING:
         printf("S_STRING : %s\n", token->value);
         break;
@@ -64,20 +67,26 @@ void print_token(Token * token) {
       case DOT:
         printf("DOT\n");
         break;
-      case SQUOTE:
-        printf("SQUOTE\n");
-        break;
-      case DQUOTE:
-        printf("DQUOTE\n");
+      case ASSIGN:
+        printf("ASSIGN\n");
         break;
       case EQUAL:
         printf("EQUAL\n");
         break;
+      case UNEQUAL:
+        printf("UNEQUAL\n");
+        break;
       case GREATER:
         printf("GREATER\n");
         break;
+      case GREATER_EQUAL:
+        printf("GREATER_EQUAL\n");
+        break;
       case LOWER:
         printf("LOWER\n");
+        break;
+      case LOWER_EQUAL:
+        printf("LOWER_EQUAL\n");
         break;
       case PLUS:
         printf("PLUS\n");
@@ -128,7 +137,6 @@ void print_token(Token * token) {
         printf("UNKNOWN\n");
         break;
     }
-
 }
 
 void test_lexer(char * file_content){

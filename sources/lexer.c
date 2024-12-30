@@ -40,6 +40,19 @@ void rewind_token_stream(TokenStream * stream) {
   stream->current = 0;
 }
 
+void append_value(Token * token, char * value) {
+  if (token->value != NULL) {
+    size_t token_val_len = strlen(token->value);
+    size_t value_len = strlen(value);
+    if ((token->value = realloc(token->value, token_val_len + value_len + 1)) == NULL) {
+      fprintf(stderr, "ERREUR::LEXEUR::APPEND_VALUE::ALLOCATION_1\n\nL'allocation mémoire de la valeur du token a échoué.\n");
+    } else {
+      strncpy(token->value + token_val_len, value, value_len);
+      token->value[token_val_len + value_len] = '\0';
+    }
+  }
+}
+
 Token * get_token(TokenStream * stream, int position) {
   if (position > 0) {
     if (position <= stream->current) {
@@ -107,6 +120,8 @@ TokenStream * new_token_stream(char * str) {
       return NULL;
     }
 
+    Token * last = NULL;
+
     switch (str[cursor1]) {
       case ';':
         push_token(stream, (Token){SEMICOLON, NULL, cursor1});
@@ -115,10 +130,15 @@ TokenStream * new_token_stream(char * str) {
         push_token(stream, (Token){COMMA, NULL, cursor1});
         continue;
       case '.':
-        push_token(stream, (Token){DOT, NULL, cursor1});
+        last = get_token(stream, -1);
+        if (last->type == NUMBER) {
+          last->type = FLOATING_NUMBER;
+          append_value(last, ".");
+        } else {
+          push_token(stream, (Token){DOT, NULL, cursor1});
+        }
         continue;
       case '\'':
-        push_token(stream, (Token){SQUOTE, NULL, cursor1});
         if (in_string){
           in_string = 0;
           continue;
@@ -126,7 +146,6 @@ TokenStream * new_token_stream(char * str) {
         in_string = '\'';
         break;
       case '"':
-        push_token(stream, (Token){DQUOTE, NULL, cursor1});
         if (in_string){
           in_string = 0;
           continue;
@@ -134,7 +153,18 @@ TokenStream * new_token_stream(char * str) {
         in_string = '"';
         break;
       case '=':
-        push_token(stream, (Token){EQUAL, NULL, cursor1});
+        last = get_token(stream, -1);
+        if (last->type == ASSIGN) {
+          last->type = EQUAL;
+        } else if (last->type == GREATER) {
+          last->type = GREATER_EQUAL;
+        } else if (last->type == LOWER) {
+          last->type = LOWER_EQUAL;
+        } else if (last->type == EXCLAM) {
+          last->type = UNEQUAL;
+        } else {
+          push_token(stream, (Token){ASSIGN, NULL, cursor1});
+        }
         continue;
       case '>':
         push_token(stream, (Token){GREATER, NULL, cursor1});
@@ -143,14 +173,16 @@ TokenStream * new_token_stream(char * str) {
     	push_token(stream, (Token){LOWER, NULL, cursor1});
         continue;
       case '+':
-        if (get_token(stream, -1)->type == NUMBER || get_token(stream, -1)->type == NAME || get_token(stream, -1)->type == RPAREN) {
+        last = get_token(stream, -1);
+        if (last->type == NUMBER || last->type == FLOATING_NUMBER || last->type == NAME || last->type == RPAREN) {
     	    push_token(stream, (Token){PLUS, NULL, cursor1});
         } else {
     	    push_token(stream, (Token){U_PLUS, NULL, cursor1});
         }
         continue;
       case '-':
-        if (get_token(stream, -1)->type == NUMBER || get_token(stream, -1)->type == NAME || get_token(stream, -1)->type == RPAREN) {
+        last = get_token(stream, -1);
+        if (last->type == NUMBER || last->type == FLOATING_NUMBER || last->type == NAME || last->type == RPAREN) {
     	    push_token(stream, (Token){MINUS, NULL, cursor1});
         } else {
     	    push_token(stream, (Token){U_MINUS, NULL, cursor1});
@@ -253,10 +285,15 @@ TokenStream * new_token_stream(char * str) {
     unsigned int pos = 0;
 
     while (isdigit(cpy[pos]) && ++pos < (cursor2 - cursor1 + 1));
-    if (cursor2 - cursor1 + 1 == pos){
-       push_token(stream, (Token){NUMBER, cpy, cursor1});
-       cursor1 = cursor2;
-       continue;
+    if (cursor2 - cursor1 + 1 == pos) {
+      last = get_token(stream, -1);
+      if (last->type == FLOATING_NUMBER && last->value[strlen(last->value)-1] == '.') {
+        append_value(last, cpy);
+      } else {
+        push_token(stream, (Token){NUMBER, cpy, cursor1});
+      }
+      cursor1 = cursor2;
+      continue;
     }
 
     push_token(stream, (Token){NAME, cpy, cursor1});

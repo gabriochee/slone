@@ -62,17 +62,20 @@
 
 typedef struct Value Value;
 typedef struct Variable Variable;
+typedef struct BinaryOperator BinaryOperator;
 typedef struct Expression Expression;
 typedef struct Instruction Instruction;
 typedef struct Program Program;
 
 typedef enum Type Type;
+typedef enum BinaryOperatorType BinaryOperatorType;
 typedef enum ExpressionType ExpressionType;
 typedef enum InstructionType InstructionType;
 
 typedef struct TokenStack TokenStack;
 
 enum Type{
+  UNSIGNED_INTEGER,
   INTEGER,
   FLOAT,
   BOOL,
@@ -93,6 +96,23 @@ enum InstructionType{
   STATEMENT,
 };
 
+enum BinaryOperatorType {
+  LOGIC_AND,
+  LOGIC_OR,
+  LOGIC_XOR,
+  ADD,
+  SUB,
+  MULT,
+  DIV,
+  MOD,
+  GREATER_THAN,
+  GREATER_EQUAL_THAN,
+  LOWER_THAN,
+  LOWER_EQUAL_THAN,
+  EQUALS,
+  NOT_EQUALS,
+};
+
 struct Value{
   Type type;
   union {
@@ -110,10 +130,16 @@ struct Variable{
   char * name;
 };
 
+struct BinaryOperator {
+  BinaryOperatorType type;
+  Expression * left_expression,  * right_expression;
+};
+
 struct Expression{
   ExpressionType type;
   union{
     Value * value;
+    BinaryOperator * binary_operator;
   };
 };
 
@@ -139,7 +165,7 @@ struct TokenStack{
 
 Program * parse(TokenStream * stream);
 
-Expression * parse_expression(TokenStream * stream);
+Expression * parse_expression(TokenStack * postfix_expression);
 
 TokenStack * infix_to_postfix(TokenStream * stream);
 
@@ -153,6 +179,8 @@ void add_instruction(Program * program, Instruction * instruction);
 
 void push_token_stack(TokenStack * token_stack, Token * token);
 void free_token_stack(TokenStack * token_stack);
+
+void pretty_error(Token * wrong_token, char * error_message);
 
 int is_token_expression(Token * token);
 short operator_precendence(Token * token);
