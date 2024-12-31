@@ -6,6 +6,7 @@
 #include "../headers/parser.h"
 
 #include "../headers/lexer_test.h"
+#include "../headers/parser_test.h"
 
 #define VALUE_MASK               0b000000000000000000001111111
 #define NUMBER_MASK              0b000000000000000000000000110
@@ -21,9 +22,11 @@
 #define EQUALITY_OPERATOR_MASK   0b001100000000000000000000000
 
 void set_program(Program * program){
-  program->instruction_capacity = 1;
-  program->current_instruction = 0;
-  program->instructions = malloc(sizeof(Instruction *));
+  if (program != NULL) {
+    program->instruction_capacity = 1;
+    program->current_instruction = 0;
+    program->instructions = malloc(sizeof(Instruction *));
+  }
 }
 
 void add_instruction(Program * program, Instruction * instruction) {
@@ -98,6 +101,14 @@ int is_token_expression(Token * token){
   return mask;
 }
 
+int is_token_statement(Token * token) {
+  return token->type == NAME || token->type == ASSIGN ||
+         token->type == IF   || token->type == ELSE   ||
+         token->type == FOR  || token->type == WHILE  ||
+         token->type == CONTINUE || token->type == BREAK ||
+         token->type == LBRACE;
+}
+
 short operator_precedence(Token * token) {
   short mask = 0;
   mask =  (token->type == LPAREN)                                                            |
@@ -159,6 +170,7 @@ void push_token_stack(TokenStack * token_stack, Token * token) {
     token_stack->tokens[token_stack->current++] = token;
   }
 }
+
 void free_token_stack(TokenStack * token_stack) {
   if (token_stack->tokens != NULL) {
     free(token_stack->tokens);
@@ -184,8 +196,8 @@ void free_token_stack(TokenStack * token_stack) {
 //   dépile l'opérateur du sommet de la pile des opérateurs vers la pile de sortie et on empile notre opérateur sur
 //   la pile des opérateurs.
 //
-//  Finalement, si notre opérateur est un parenthèse fermante, alors on dépile toutes les valeurs de la pile des
-//  opérateurs vers la pile de sortie jusqu'a que l'on rencontre une parenthèse ouvrante dans la pile des opérateurs.
+//  Finalement, si notre opérateur est une parenthèse fermante, alors on dépile toutes les valeurs de la pile des
+//  opérateurs vers la pile de sortie jusqu'à ce que l'on rencontre une parenthèse ouvrante dans la pile des opérateurs.
 //
 // Pour faire une structure en arbre, on lit de droite à gauche
 
@@ -210,14 +222,14 @@ TokenStack * infix_to_postfix(TokenStream * stream) {
   while ((mask = is_token_expression(token = next_token(stream)))) {
     if (mask & VALUE_MASK) {
       push_token_stack(output_stack, token);
-    } else if (token->type == LPAREN){
+    } else if (token->type == LPAREN) {
       push_token_stack(operator_stack, token);
     } else if (token->type == RPAREN) {
       while (!operator_stack->is_empty && top_token_stack(operator_stack)->type != LPAREN) {
         push_token_stack(output_stack, pop_token_stack(operator_stack));
       }
       if (top_token_stack(operator_stack)->type != LPAREN) {
-        // Insérer message d'erreur parenthèse fermante en trop.(
+        // Insérer message d'erreur parenthèse fermante en trop.
         free_token_stack(operator_stack);
         free_token_stack(output_stack);
         return NULL;
@@ -243,16 +255,17 @@ TokenStack * infix_to_postfix(TokenStream * stream) {
 Expression * parse_expression(TokenStack * postfix_expression){
   Token * top_token = NULL;
   Expression * expression = NULL;
-  int token_mask;
 
   if ((expression = malloc(sizeof(Expression))) == NULL) {
     fprintf(stderr, "ERREUR::PARSER::PARSE_EXPRESSION::ALLOCATION_1\n\nErreur d'allocation de l'expression.\n");
     return NULL;
   }
 
+  expression->type = EMPTY;
+
   if (!postfix_expression->is_empty) {
     top_token = pop_token_stack(postfix_expression);
-    token_mask = is_token_expression(top_token);
+    int token_mask = is_token_expression(top_token);
 
     if (token_mask & VALUE_MASK) {
       Value * value = NULL;
@@ -278,6 +291,7 @@ Expression * parse_expression(TokenStack * postfix_expression){
           value->type = INTEGER;
           value->integer_value = strtoll(top_token->value, NULL, 10);
           if (errno == ERANGE) {
+            errno = 0;
             value->type = UNSIGNED_INTEGER;
             value->unsigned_integer_value = strtoull(top_token->value, NULL, 10);
           }
@@ -298,13 +312,26 @@ Expression * parse_expression(TokenStack * postfix_expression){
           value->type = STRING;
           value->string_value = top_token->value;
         }
+      } else if (top_token->type == NAME) {
+        Variable * variable = NULL;
+
+        if ((variable = malloc(sizeof(Variable))) == NULL) {
+          fprintf(stderr, "ERREUR::PARSER::PARSE_EXPRESSION::ALLOCATION_3\n\nErreur d'allocation de la variable.\n");
+          return NULL;
+        }
+
+        variable->name = top_token->value;
+
+        expression->type = VARIABLE;
+        expression->variable = variable;
+
       }
     } else if (token_mask & BINARY_OPERATOR_MASK) {
       BinaryOperator * binary_operator = NULL;
 
       expression->type = BINARY_OPERATION;
 
-      if ((binary_operator = malloc(sizeof(Value))) == NULL) {
+      if ((binary_operator = malloc(sizeof(BinaryOperator))) == NULL) {
         fprintf(stderr, "ERREUR::PARSER::PARSE_EXPRESSION::ALLOCATION_3\n\nErreur d'allocation de l'opérateur binaire.\n");
         return NULL;
       }
@@ -322,46 +349,46 @@ Expression * parse_expression(TokenStack * postfix_expression){
         switch (top_token->type) {
           case AND:
             expression->binary_operator->type = LOGIC_AND;
-            break;
+          break;
           case OR:
             expression->binary_operator->type = LOGIC_OR;
-            break;
+          break;
           case XOR:
             expression->binary_operator->type = LOGIC_XOR;
-            break;
+          break;
           case EQUAL:
-            expression->binary_operator->type = EQUALS;
-            break;
+            expression->binary_operator->type = EQUAL_TO;
+          break;
           case UNEQUAL:
-            expression->binary_operator->type = NOT_EQUALS;
-            break;
+            expression->binary_operator->type = NOT_EQUAL_TO;
+          break;
           case GREATER:
             expression->binary_operator->type = GREATER_THAN;
-            break;
+          break;
           case GREATER_EQUAL:
             expression->binary_operator->type = GREATER_EQUAL_THAN;
-            break;
+          break;
           case LOWER:
             expression->binary_operator->type = LOWER_THAN;
-            break;
+          break;
           case LOWER_EQUAL:
             expression->binary_operator->type = LOWER_EQUAL_THAN;
-            break;
+          break;
           case PLUS:
             expression->binary_operator->type = ADD;
-            break;
+          break;
           case MINUS:
             expression->binary_operator->type = SUB;
-            break;
+          break;
           case STAR:
             expression->binary_operator->type = MULT;
-            break;
+          break;
           case SLASH:
             expression->binary_operator->type = DIV;
-            break;
+          break;
           case PERCENT:
             expression->binary_operator->type = MOD;
-            break;
+          break;
           default:
             break;
         }
@@ -369,11 +396,87 @@ Expression * parse_expression(TokenStack * postfix_expression){
         binary_operator->left_expression = left_expression;
         binary_operator->right_expression = right_expression;
       }
+    } else if (token_mask & UNARY_OPERATOR_MASK) {
+      UnaryOperator *unary_operator = NULL;
 
+      if ((unary_operator = malloc(sizeof(UnaryOperator))) == NULL) {
+        fprintf(stderr, "ERREUR::PARSER::PARSE_EXPRESSION::ALLOCATION_3\n\nErreur d'allocation de l'opérateur binaire.\n");
+        return NULL;
+      }
+
+      Expression *next_expression = parse_expression(postfix_expression);
+
+      if (next_expression != NULL) {
+        switch (top_token->type) {
+          case NOT:
+            unary_operator->type = LOGIC_NOT;
+            break;
+          case U_PLUS:
+            unary_operator->type = UNARY_PLUS;
+            break;
+          case U_MINUS:
+            unary_operator->type = UNARY_MINUS;
+            break;
+          default:
+            break;
+        }
+        unary_operator->expression = next_expression;
+
+        expression->unary_operator = unary_operator;
+        expression->type = UNARY_OPERATION;
+      }
     }
   }
 
   return expression;
+}
+
+Statement * parse_statement(TokenStream * stream) {
+  Token * token = NULL;
+  Statement * statement = NULL;
+
+  if ((statement = malloc(sizeof(Statement))) == NULL) {
+    fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_1\n\nErreur d'allocation de l'instruction.\n");
+    return NULL;
+  }
+
+  while ((token = next_token(stream))->type != END) {
+    if (token->type == ASSIGN) {
+      if (get_token(stream, -1)->type != NAME) {
+        // Gérer l'erreur
+        printf("ASSIGNATION IMPOSSIBLE !\n");
+        return NULL;
+      }
+    } else if (token->type == IF) {
+      TokenStack * token_stack = infix_to_postfix(stream);
+      if (token_stack == NULL) {
+        // Gérer l'erreur
+        return NULL;
+      }
+
+      Expression * condition = parse_expression(token_stack);
+
+      if (condition->type == EMPTY) {
+        // Gérer l'erreur
+        printf("PAS DE CONDITION !\n");
+        free_token_stack(token_stack);
+        return NULL;
+      }
+
+      if (get_token(stream, -1)->type != LBRACE) {
+        // Gérer l'erreur
+        printf("PAS D'ACCOLADE !\n");
+        free_token_stack(token_stack);
+        return NULL;
+      }
+
+      Program * true_branch = parse(stream);
+
+
+    }
+  }
+
+  return NULL;
 }
 
 Program * parse(TokenStream * stream){
@@ -389,22 +492,66 @@ Program * parse(TokenStream * stream){
   if (program->instructions == NULL) {
     fprintf(stderr, "ERREUR::PARSER::ALLOCATION_2\n\nL'allocation mémoire de l'arbre de syntaxe a échouée.\n");
     return NULL;
-  };
-
-  printf("%d\n", is_token_expression(current_token(stream)));
-
-  if (is_token_expression(current_token(stream))){
-    Instruction * instruction = malloc(sizeof(Instruction));
-    TokenStack * stack = NULL;
-    if ((stack = infix_to_postfix(stream)) == NULL) {
-      free(program->instructions);
-      free(program);
-      return NULL;
-    }
-    instruction->type = EXPRESSION;
-    instruction->expression = parse_expression(stack);
-    add_instruction(program, instruction);
   }
 
-  return NULL;
+  while (current_token(stream)->type != END && current_token(stream)->type != RBRACE) {
+    Instruction * instruction = NULL;
+
+    if (is_token_statement(current_token(stream))) {
+      instruction = malloc(sizeof(Instruction));
+
+      if (instruction == NULL) {
+        fprintf(stderr, "ERREUR::PARSER::ALLOCATION_4\n\nL'allocation mémoire de l'instruction a échouée.\n");
+        free(program->instructions);
+        free(program);
+        return NULL;
+      }
+
+      instruction->type = STATEMENT;
+      instruction->statement = parse_statement(stream);
+
+      if (instruction->expression == NULL) {
+        free(instruction);
+        free(program->instructions);
+        free(program);
+        return NULL;
+      }
+
+      add_instruction(program, instruction);
+    }
+
+    if (is_token_expression(current_token(stream))) {
+      instruction = malloc(sizeof(Instruction));
+      TokenStack * stack = NULL;
+
+      if (instruction == NULL) {
+        fprintf(stderr, "ERREUR::PARSER::ALLOCATION_5\n\nL'allocation mémoire de l'instruction a échouée.\n");
+        free(program->instructions);
+        free(program);
+        return NULL;
+      }
+
+      if ((stack = infix_to_postfix(stream)) == NULL) {
+        free(instruction);
+        free(program->instructions);
+        free(program);
+        return NULL;
+      }
+
+      instruction->type = EXPRESSION;
+      instruction->expression = parse_expression(stack);
+
+      if (instruction->expression == NULL) {
+        free(stack);
+        free(instruction);
+        free(program->instructions);
+        free(program);
+        return NULL;
+      }
+
+      add_instruction(program, instruction);
+    }
+  }
+
+  return program;
 }

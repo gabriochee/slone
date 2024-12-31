@@ -58,21 +58,32 @@
 //
 // La notation Backus-Naur permet d'expliciter la syntaxe du langage de programmation et ainsi nous guider sur la construction des différents objets pouvant constituer notre arbre de syntaxe.
 //
-// Notre parser utilise la méthode de consrtuction d'arbre syntaxique par descente récursive.
+// Notre parser utilise la méthode de construction d'arbre syntaxique par descente récursive.
 
 typedef struct Value Value;
 typedef struct Variable Variable;
 typedef struct BinaryOperator BinaryOperator;
+typedef struct UnaryOperator UnaryOperator;
 typedef struct Expression Expression;
+
+typedef struct Statement Statement;
+typedef struct Assignment Assignment;
+typedef struct ConditionalBranch ConditionalBranch;
+typedef struct ForLoop ForLoop;
+typedef struct WhileLoop WhileLoop;
+
 typedef struct Instruction Instruction;
 typedef struct Program Program;
 
+typedef struct TokenStack TokenStack;
+
 typedef enum Type Type;
 typedef enum BinaryOperatorType BinaryOperatorType;
+typedef enum UnaryOperatorType UnaryOperatorType;
 typedef enum ExpressionType ExpressionType;
+typedef enum StatementType StatementType;
 typedef enum InstructionType InstructionType;
-
-typedef struct TokenStack TokenStack;
+typedef enum LoopInstruction LoopInstruction;
 
 enum Type{
   UNSIGNED_INTEGER,
@@ -85,10 +96,11 @@ enum Type{
 
 enum ExpressionType{
   VALUE,
+  VARIABLE,
   EXPR,
   BINARY_OPERATION,
   UNARY_OPERATION,
-  END_OF_EXPRESSION,
+  EMPTY,
 };
 
 enum InstructionType{
@@ -109,8 +121,28 @@ enum BinaryOperatorType {
   GREATER_EQUAL_THAN,
   LOWER_THAN,
   LOWER_EQUAL_THAN,
-  EQUALS,
-  NOT_EQUALS,
+  EQUAL_TO,
+  NOT_EQUAL_TO,
+};
+
+enum UnaryOperatorType {
+  LOGIC_NOT,
+  UNARY_MINUS,
+  UNARY_PLUS,
+};
+
+enum StatementType {
+  ASSIGNMENT,
+  CONDITIONAL_BRANCH,
+  FOR_LOOP,
+  WHILE_LOOP,
+  LOOP_INSTRUCTION,
+  PROGRAM,
+};
+
+enum LoopInstruction {
+  CONTINUE_LOOP,
+  BREAK_LOOP,
 };
 
 struct Value{
@@ -126,7 +158,7 @@ struct Value{
 };
 
 struct Variable{
-  Type type;
+  //Type type;
   char * name;
 };
 
@@ -135,11 +167,52 @@ struct BinaryOperator {
   Expression * left_expression,  * right_expression;
 };
 
+struct UnaryOperator {
+  UnaryOperatorType type;
+  Expression * expression;
+};
+
 struct Expression{
   ExpressionType type;
   union{
     Value * value;
     BinaryOperator * binary_operator;
+    UnaryOperator * unary_operator;
+    Variable * variable;
+  };
+};
+
+struct Assignment {
+  Variable * variable;
+  Value * value;
+};
+
+struct ConditionalBranch {
+  Expression * expression;
+  Program * true_branch, * false_branch;
+};
+
+struct ForLoop {
+  Statement * initial_statement;
+  Expression * condition;
+  Statement * modifier;
+  Program * program;
+};
+
+struct WhileLoop {
+  Expression * condition;
+  Program * program;
+};
+
+struct Statement {
+  StatementType type;
+  union {
+    Assignment * assignment;
+    ConditionalBranch * conditional_branch;
+    ForLoop * for_loop;
+    WhileLoop * while_loop;
+    LoopInstruction * loop_instruction;
+    Program * program;
   };
 };
 
@@ -147,6 +220,7 @@ struct Instruction{
   InstructionType type;
   union {
     Expression * expression;
+    Statement * statement;
   };
 };
 
@@ -167,12 +241,13 @@ Program * parse(TokenStream * stream);
 
 Expression * parse_expression(TokenStack * postfix_expression);
 
-TokenStack * infix_to_postfix(TokenStream * stream);
+Statement * parse_statement(TokenStream * stream);
 
 Token * pop_token_stack(TokenStack * token_stack);
 Token * top_token_stack(TokenStack * token_stack);
 
 TokenStack * new_token_stack();
+TokenStack * infix_to_postfix(TokenStream * stream);
 
 void set_program(Program * program);
 void add_instruction(Program * program, Instruction * instruction);
@@ -180,9 +255,8 @@ void add_instruction(Program * program, Instruction * instruction);
 void push_token_stack(TokenStack * token_stack, Token * token);
 void free_token_stack(TokenStack * token_stack);
 
-void pretty_error(Token * wrong_token, char * error_message);
-
 int is_token_expression(Token * token);
-short operator_precendence(Token * token);
+int is_token_statement(Token * token);
+short operator_precedence(Token * token);
 
 #endif

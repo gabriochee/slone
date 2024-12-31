@@ -21,7 +21,7 @@ void print_tree(Expression * root){
           printf("INTEGER %lld\n", root->value->integer_value);
           break;
         case UNSIGNED_INTEGER:
-          printf("UNSIGNED INTEGER%llu\n", root->value->unsigned_integer_value);
+          printf("UNSIGNED INTEGER : %llu\n", root->value->unsigned_integer_value);
           break;
         case BOOL:
           printf("BOOL : %s\n", root->value->bool_value ? "true" : "false");
@@ -37,6 +37,9 @@ void print_tree(Expression * root){
           break;
       }
       return;
+  } else if (root->type == VARIABLE){
+    printf("VARIABLE : %s\n", root->variable->name);
+    return;
   } else if (root->type == BINARY_OPERATION){
     switch(root->binary_operator->type){
       case ADD:
@@ -66,11 +69,11 @@ void print_tree(Expression * root){
       case LOWER_EQUAL_THAN:
         printf("LOWER_EQUAL_THAN\n");
         break;
-      case EQUALS:
-        printf("EQUALS\n");
+      case EQUAL_TO:
+        printf("EQUAL_TO\n");
         break;
-      case NOT_EQUALS:
-        printf("NOT_EQUALS\n");
+      case NOT_EQUAL_TO:
+        printf("NOT_EQUAL_TO\n");
         break;
       case LOGIC_AND:
         printf("AND\n");
@@ -82,10 +85,28 @@ void print_tree(Expression * root){
         printf("XOR\n");
         break;
     }
+  } else if (root->type == UNARY_OPERATION){
+    switch(root->unary_operator->type){
+      case LOGIC_NOT:
+        printf("LOGIC_NOT\n");
+        break;
+      case UNARY_PLUS:
+        printf("UNARY_PLUS\n");
+        break;
+      case UNARY_MINUS:
+        printf("UNARY_MINUS\n");
+        break;
+      default:
+        break;
+    }
   }
 
   tabs++;
 
-  print_tree(root->binary_operator->left_expression);
-  print_tree(root->binary_operator->right_expression);
+  if (root->type == BINARY_OPERATION){
+  	print_tree(root->binary_operator->left_expression);
+  	print_tree(root->binary_operator->right_expression);
+  } else if (root->type == UNARY_OPERATION){
+    print_tree(root->unary_operator->expression);
+  }
 }

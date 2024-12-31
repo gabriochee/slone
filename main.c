@@ -42,15 +42,7 @@ int main(const int argc, const char * argv[]){
 
   TokenStream * stream = new_token_stream(file_content);
 
-  TokenStack * ts = infix_to_postfix(stream);
-
-  Expression * expression = parse_expression(ts);
-
-  if (expression != NULL) {
-    print_tree(expression);
-  }
-
-  //parse(stream);
+  parse_statement(stream);
 
   fclose(file);
   free_token_stream(stream);

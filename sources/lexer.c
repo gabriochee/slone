@@ -174,7 +174,7 @@ TokenStream * new_token_stream(char * str) {
         continue;
       case '+':
         last = get_token(stream, -1);
-        if (last->type == NUMBER || last->type == FLOATING_NUMBER || last->type == NAME || last->type == RPAREN) {
+        if ((last->type == NUMBER || last->type == FLOATING_NUMBER || last->type == NAME || last->type == RPAREN) && stream->current > 1) {
     	    push_token(stream, (Token){PLUS, NULL, cursor1});
         } else {
     	    push_token(stream, (Token){U_PLUS, NULL, cursor1});
@@ -182,7 +182,7 @@ TokenStream * new_token_stream(char * str) {
         continue;
       case '-':
         last = get_token(stream, -1);
-        if (last->type == NUMBER || last->type == FLOATING_NUMBER || last->type == NAME || last->type == RPAREN) {
+        if ((last->type == NUMBER || last->type == FLOATING_NUMBER || last->type == NAME || last->type == RPAREN) && stream->current > 1) {
     	    push_token(stream, (Token){MINUS, NULL, cursor1});
         } else {
     	    push_token(stream, (Token){U_MINUS, NULL, cursor1});

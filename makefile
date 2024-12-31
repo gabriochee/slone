@@ -8,6 +8,8 @@ CFLAGS  = -Wall -Werror
 #  	  COMPILATION
 # --------------------------
 
+# Il faut alléger ce Makefile mon vier ! TODO : utiliser les paramètres des commandes make
+
 all: main.o lexer.o lexer_test.o parser.o parser_test.o
 	gcc $(CFLAGS) main.o lexer.o lexer_test.o parser.o parser_test.o -o interpreter
 
