@@ -77,6 +77,8 @@ typedef struct Program Program;
 
 typedef struct TokenStack TokenStack;
 
+typedef struct VariableDictionnary VariableDictionnary;
+
 typedef enum Type Type;
 typedef enum BinaryOperatorType BinaryOperatorType;
 typedef enum UnaryOperatorType UnaryOperatorType;
@@ -227,6 +229,7 @@ struct Instruction{
 struct Program{
   unsigned int instruction_capacity;
   unsigned int current_instruction;
+  VariableDictionnary * variable_dictionary;
   Instruction ** instructions;
 };
 
@@ -237,6 +240,13 @@ struct TokenStack{
   Token ** tokens;
 };
 
+struct VariableDictionnary {
+  unsigned int current;
+  unsigned int capacity;
+  Variable ** variables;
+};
+
+Program * new_program();
 Program * parse(TokenStream * stream);
 
 Expression * parse_expression(TokenStack * postfix_expression);
@@ -249,11 +259,18 @@ Token * top_token_stack(TokenStack * token_stack);
 TokenStack * new_token_stack();
 TokenStack * infix_to_postfix(TokenStream * stream);
 
-void set_program(Program * program);
+Variable * get_variable(VariableDictionnary * variable_dictionary, char * name);
+
+VariableDictionnary * new_variable_dictionary();
+
+void free_program(Program * program);
 void add_instruction(Program * program, Instruction * instruction);
 
 void push_token_stack(TokenStack * token_stack, Token * token);
 void free_token_stack(TokenStack * token_stack);
+
+void free_variable_dictionnary(VariableDictionnary * variable_dictionnary);
+void add_variable_dictionnary(VariableDictionnary * dictionary, Variable * variable);
 
 int is_token_expression(Token * token);
 int is_token_statement(Token * token);

@@ -21,14 +21,6 @@
 #define UNARY_OPERATOR_MASK      0b000000000000001110000000000
 #define EQUALITY_OPERATOR_MASK   0b001100000000000000000000000
 
-void set_program(Program * program){
-  if (program != NULL) {
-    program->instruction_capacity = 1;
-    program->current_instruction = 0;
-    program->instructions = malloc(sizeof(Instruction *));
-  }
-}
-
 void add_instruction(Program * program, Instruction * instruction) {
   if (program->current_instruction >= program->instruction_capacity) {
     program->instructions = realloc(program->instructions, (program->instruction_capacity *= 2) * sizeof(Instruction *));
@@ -37,6 +29,17 @@ void add_instruction(Program * program, Instruction * instruction) {
   if (program->instructions != NULL) {
     program->instructions[program->current_instruction++] = instruction;
   }
+}
+
+void free_program(Program * program) {
+  free(program->instructions);
+  free_variable_dictionnary(program->variable_dictionary);
+  free(program);
+}
+
+void free_variable_dictionnary(VariableDictionnary * variable_dictionnary) {
+  free(variable_dictionnary->variables);
+  free(variable_dictionnary);
 }
 
 int is_token_expression(Token * token){
@@ -126,6 +129,21 @@ short operator_precedence(Token * token) {
   return mask;
 }
 
+Program * new_program() {
+  Program * program = malloc(sizeof(Program));
+
+  if (program != NULL) {
+    if ((program->instructions = malloc(sizeof(Instruction*))) != NULL && (program->variable_dictionary = new_variable_dictionary()) != NULL){
+      program->instruction_capacity = 1;
+      program->current_instruction = 0;
+      return program;
+    }
+    free_program(program);
+  }
+
+  return NULL;
+}
+
 TokenStack * new_token_stack() {
   TokenStack * stack = malloc(sizeof(TokenStack));
 
@@ -137,6 +155,22 @@ TokenStack * new_token_stack() {
   }
 
   return stack;
+}
+
+VariableDictionnary * new_variable_dictionary() {
+  VariableDictionnary * dictionary = malloc(sizeof(VariableDictionnary));
+
+  if (dictionary != NULL) {
+    if ((dictionary->variables = malloc(sizeof(Variable *))) != NULL) {
+      dictionary->capacity = 1;
+      dictionary->current = 0;
+      return dictionary;
+    }
+
+    free(dictionary);
+  }
+
+  return NULL;
 }
 
 Token * pop_token_stack(TokenStack * token_stack) {
@@ -482,15 +516,8 @@ Statement * parse_statement(TokenStream * stream) {
 Program * parse(TokenStream * stream){
   Program * program = NULL;
 
-  if ((program = malloc(sizeof(Program))) == NULL) {
+  if ((program = new_program()) == NULL) {
     fprintf(stderr, "ERREUR::PARSER::ALLOCATION_1\n\nL'allocation mémoire de l'arbre de syntaxe a échouée.\n");
-    return NULL;
-  }
-
-  set_program(program);
-
-  if (program->instructions == NULL) {
-    fprintf(stderr, "ERREUR::PARSER::ALLOCATION_2\n\nL'allocation mémoire de l'arbre de syntaxe a échouée.\n");
     return NULL;
   }
 
@@ -501,7 +528,7 @@ Program * parse(TokenStream * stream){
       instruction = malloc(sizeof(Instruction));
 
       if (instruction == NULL) {
-        fprintf(stderr, "ERREUR::PARSER::ALLOCATION_4\n\nL'allocation mémoire de l'instruction a échouée.\n");
+        fprintf(stderr, "ERREUR::PARSER::ALLOCATION_2\n\nL'allocation mémoire de l'instruction a échouée.\n");
         free(program->instructions);
         free(program);
         return NULL;
@@ -525,7 +552,7 @@ Program * parse(TokenStream * stream){
       TokenStack * stack = NULL;
 
       if (instruction == NULL) {
-        fprintf(stderr, "ERREUR::PARSER::ALLOCATION_5\n\nL'allocation mémoire de l'instruction a échouée.\n");
+        fprintf(stderr, "ERREUR::PARSER::ALLOCATION_3\n\nL'allocation mémoire de l'instruction a échouée.\n");
         free(program->instructions);
         free(program);
         return NULL;
