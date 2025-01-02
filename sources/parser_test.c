@@ -110,3 +110,30 @@ void print_tree(Expression * root){
     print_tree(root->unary_operator->expression);
   }
 }
+
+void print_statement(Statement * root){
+  switch (root->type){
+  case ASSIGNMENT:
+    printf("ASSIGNMENT\n");
+    break;
+  case CONDITIONAL_BRANCH:
+    printf("IF ");
+    print_tree(root->conditional_branch->expression);
+    break;
+  case FOR_LOOP:
+    printf("FOR_LOOP\n");
+    break;
+  case WHILE_LOOP:
+    printf("WHILE_LOOP\n");
+    break;
+  case LOOP_INSTRUCTION:
+    printf("LOOP_INSTRUCTION\n");
+    break;
+  case PROGRAM:
+    printf("PROGRAM\n");
+    break;
+  default:
+    printf("UNKNOWN STATEMENT\n");
+    break;
+  }
+}

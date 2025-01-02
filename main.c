@@ -42,7 +42,16 @@ int main(const int argc, const char * argv[]){
 
   TokenStream * stream = new_token_stream(file_content);
 
-  parse_statement(stream);
+  Program * program = parse(stream);
+
+  if (program != NULL) {
+    for (int i = 0; i < program->current_instruction; i++) {
+      if (program->instructions[i]->type == STATEMENT) {
+        //print_statement(program->instructions[i]->statement);
+      }
+    }
+  }
+
 
   fclose(file);
   free_token_stream(stream);

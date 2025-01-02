@@ -11,7 +11,7 @@
 // 1. Types élémentaires
 //      <symbol>   ::= ensemble des caractères de la table ASCII.
 //
-//      <letter>   ::= ensemble des caractères de la table ASCII chiffres, espaces et operateurs exclus.
+//      <letter>   ::= ensemble des caractères de la table ASCII. Chiffres, espaces et operateurs exclus.
 //
 //      <digit>    ::= 0|1|2|3|4|5|6|7|8|9|
 //
@@ -32,15 +32,15 @@
 //
 //      <binary_operator> ::= +|-|*|/|%|<|>|<=|>=|==|!=|and|or|xor
 //
-//      <unary_operator>  ::= not
+//      <unary_operator>  ::= not|-|+
 //
 //      <expression>      ::= <value> | <expression><binary_operator><expression> | <unary_operator><expression> | (<expression>)
 //
-//      <if>              ::= if (<expression>) {<program>}
+//      <if>              ::= if <expression> {<program>}
 //
 //      <else>            ::= <if> else {<program>} | <if> else <if>
 //
-//      <for>             ::= for (<statement>,<expression>,<statement>){<program>}
+//      <for>             ::= for <statement>,<expression>,<statement> {<program>}
 //
 //      <while>           ::= while (<expression>){<program>}
 //
@@ -186,7 +186,7 @@ struct Expression{
 
 struct Assignment {
   Variable * variable;
-  Value * value;
+  Expression * value;
 };
 
 struct ConditionalBranch {

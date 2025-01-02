@@ -466,7 +466,6 @@ Expression * parse_expression(TokenStack * postfix_expression){
 }
 
 Statement * parse_statement(TokenStream * stream) {
-  Token * token = NULL;
   Statement * statement = NULL;
 
   if ((statement = malloc(sizeof(Statement))) == NULL) {
@@ -474,17 +473,69 @@ Statement * parse_statement(TokenStream * stream) {
     return NULL;
   }
 
-  while ((token = next_token(stream))->type != END) {
-    if (token->type == ASSIGN) {
-      if (get_token(stream, -1)->type != NAME) {
+  while (current_token(stream)->type != END) {
+    if (current_token(stream)->type == LBRACE) {
+      next_token(stream);
+      statement->type = PROGRAM;
+      statement->program = parse(stream);
+      return statement;
+    }
+
+    if (current_token(stream)->type == NAME) {
+      next_token(stream);
+
+      if (current_token(stream)->type != ASSIGN) {
         // Gérer l'erreur
-        printf("ASSIGNATION IMPOSSIBLE !\n");
+        printf("INSTRUCTION ATTENDUE.\n");
         return NULL;
       }
-    } else if (token->type == IF) {
+
+      next_token(stream);
+
       TokenStack * token_stack = infix_to_postfix(stream);
       if (token_stack == NULL) {
         // Gérer l'erreur
+        free(statement);
+        return NULL;
+      }
+
+      Expression * value = parse_expression(token_stack);
+
+      if (value == NULL) {
+        // Gérer l'erreur
+        free_token_stack(token_stack);
+        free(statement);
+        return NULL;
+      }
+
+      if (value->type == EMPTY) {
+        // Gérer l'erreur
+        printf("PAS DE VALEUR !\n");
+        free_token_stack(token_stack);
+        free(statement);
+        return NULL;
+      }
+
+      if ((statement->assignment = malloc(sizeof(Assignment))) == NULL) {
+        fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_2\n\nErreur d'allocation de l'assignation.\n");
+        free_token_stack(token_stack);
+        free(statement);
+        return NULL;
+      }
+
+      statement->assignment->value = value;
+      statement->type = ASSIGNMENT;
+      break;
+
+    }
+
+    if (current_token(stream)->type == IF) {
+      next_token(stream);
+
+      TokenStack * token_stack = infix_to_postfix(stream);
+      if (token_stack == NULL) {
+        // Gérer l'erreur
+        free(statement);
         return NULL;
       }
 
@@ -494,6 +545,7 @@ Statement * parse_statement(TokenStream * stream) {
         // Gérer l'erreur
         printf("PAS DE CONDITION !\n");
         free_token_stack(token_stack);
+        free(statement);
         return NULL;
       }
 
@@ -501,16 +553,118 @@ Statement * parse_statement(TokenStream * stream) {
         // Gérer l'erreur
         printf("PAS D'ACCOLADE !\n");
         free_token_stack(token_stack);
+        free(statement);
         return NULL;
       }
 
       Program * true_branch = parse(stream);
 
+      if (true_branch == NULL) {
+        free_token_stack(token_stack);
+        free(statement);
+        return NULL;
+      }
+
+      next_token(stream); // Passe au token suivant afin de ne pas rester bloqué dessus si c'est une accolade.
+
+      if ((statement->conditional_branch = malloc(sizeof(ConditionalBranch))) == NULL) {
+        fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_3\n\nErreur d'allocation de la branche conditionnelle.\n");
+        return NULL;
+      }
+
+      statement->conditional_branch->expression = condition;
+      statement->conditional_branch->true_branch = true_branch;
+      statement->type = CONDITIONAL_BRANCH;
+
+      if (next_token(stream)->type == ELSE) {
+        if (current_token(stream)->type == LBRACE || current_token(stream)->type == IF) {
+          if ((statement->conditional_branch->false_branch = parse(stream)) == NULL) {
+            // free program
+            free_token_stack(token_stack);
+            free(statement);
+            return NULL;
+          }
+        } else {
+          // Gérer l'erreur
+          printf("MAUVAISE SYNTAXE APRES ELSE.\n");
+          free_token_stack(token_stack);
+          free(statement);
+          return NULL;
+        }
+      }
+
+      break;
+    }
+
+    if (current_token(stream)->type == FOR) {
+      next_token(stream);
+
+      if ((statement->for_loop = malloc(sizeof(ForLoop))) == NULL) {
+        fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_4\n\nErreur d'allocation de la boucle définie.\n");
+        return NULL;
+      }
+
+      statement->for_loop->initial_statement = parse_statement(stream);
+
+      if (statement->for_loop->initial_statement == NULL) {
+        free(statement);
+        return NULL;
+      }
+
+      print_token(get_token(stream, -1));
+      if (get_token(stream, -1)->type != COMMA) {
+        // Erreur de syntaxe : pas de virgule !
+        printf("PAS DE VIRGULES !\n");
+        free(statement->for_loop);
+        free(statement);
+        return NULL;
+      }
+
+      TokenStack * token_stack = infix_to_postfix(stream);
+
+      if (token_stack == NULL) {
+        free(statement->for_loop);
+        free(statement);
+        return NULL;
+      }
+
+      statement->for_loop->condition = parse_expression(token_stack);
+
+      if (statement->for_loop->condition == NULL) {
+        free_token_stack(token_stack);
+        free(statement->for_loop);
+        free(statement);
+        return NULL;
+      }
+
+      print_token(get_token(stream, -1));
+
+      if (get_token(stream, -1)->type != COMMA) {
+        // Erreur de syntaxe : pas de virgule !
+        printf("PAS DE VIRGULES !\n");
+        free(statement->for_loop);
+        free(statement);
+        return NULL;
+      }
+
+
+      statement->for_loop->modifier = parse_statement(stream);
+
+      if (statement->for_loop->modifier == NULL) {
+        free_token_stack(token_stack);
+        free(statement->for_loop);
+        free(statement);
+        return NULL;
+      }
+
+      statement->type = FOR_LOOP;
+      statement->for_loop->program = parse(stream);
+      break;
 
     }
   }
 
-  return NULL;
+  return statement;
 }
 
 Program * parse(TokenStream * stream){
@@ -537,7 +691,7 @@ Program * parse(TokenStream * stream){
       instruction->type = STATEMENT;
       instruction->statement = parse_statement(stream);
 
-      if (instruction->expression == NULL) {
+      if (instruction->statement == NULL) {
         free(instruction);
         free(program->instructions);
         free(program);
@@ -545,6 +699,7 @@ Program * parse(TokenStream * stream){
       }
 
       add_instruction(program, instruction);
+      continue;
     }
 
     if (is_token_expression(current_token(stream))) {
@@ -578,6 +733,7 @@ Program * parse(TokenStream * stream){
 
       add_instruction(program, instruction);
     }
+
   }
 
   return program;
