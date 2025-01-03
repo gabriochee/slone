@@ -99,6 +99,8 @@ void print_tree(Expression * root){
       default:
         break;
     }
+  } else if (root->type == EMPTY_EXPRESSION){
+    printf("EMPTY_EXPRESSION\n");
   }
 
   tabs++;
@@ -131,6 +133,9 @@ void print_statement(Statement * root){
     break;
   case PROGRAM:
     printf("PROGRAM\n");
+    break;
+  case EMPTY_STATEMENT:
+    printf("EMPTY_STATEMENT\n");
     break;
   default:
     printf("UNKNOWN STATEMENT\n");

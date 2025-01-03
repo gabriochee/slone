@@ -102,7 +102,7 @@ enum ExpressionType{
   EXPR,
   BINARY_OPERATION,
   UNARY_OPERATION,
-  EMPTY,
+  EMPTY_EXPRESSION,
 };
 
 enum InstructionType{
@@ -140,6 +140,7 @@ enum StatementType {
   WHILE_LOOP,
   LOOP_INSTRUCTION,
   PROGRAM,
+  EMPTY_STATEMENT,
 };
 
 enum LoopInstruction {

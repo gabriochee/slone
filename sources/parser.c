@@ -5,6 +5,8 @@
 #include "../headers/lexer.h"
 #include "../headers/parser.h"
 
+#include <ctype.h>
+
 #include "../headers/lexer_test.h"
 #include "../headers/parser_test.h"
 
@@ -253,7 +255,7 @@ TokenStack * infix_to_postfix(TokenStream * stream) {
 
   int mask;
 
-  while ((mask = is_token_expression(token = next_token(stream)))) {
+  while ((mask = is_token_expression(token = current_token(stream)))) {
     if (mask & VALUE_MASK) {
       push_token_stack(output_stack, token);
     } else if (token->type == LPAREN) {
@@ -277,6 +279,8 @@ TokenStack * infix_to_postfix(TokenStream * stream) {
       push_token_stack(output_stack, pop_token_stack(operator_stack));
       push_token_stack(operator_stack, token);
     }
+
+    next_token(stream);
   }
 
   while (!operator_stack->is_empty) {
@@ -295,7 +299,7 @@ Expression * parse_expression(TokenStack * postfix_expression){
     return NULL;
   }
 
-  expression->type = EMPTY;
+  expression->type = EMPTY_EXPRESSION;
 
   if (!postfix_expression->is_empty) {
     top_token = pop_token_stack(postfix_expression);
@@ -473,7 +477,10 @@ Statement * parse_statement(TokenStream * stream) {
     return NULL;
   }
 
-  while (current_token(stream)->type != END) {
+  statement->type = EMPTY_STATEMENT;
+
+  while (current_token(stream)->type != END && is_token_statement(current_token(stream))) {
+
     if (current_token(stream)->type == LBRACE) {
       next_token(stream);
       statement->type = PROGRAM;
@@ -481,12 +488,11 @@ Statement * parse_statement(TokenStream * stream) {
       return statement;
     }
 
-    if (current_token(stream)->type == NAME) {
-      next_token(stream);
+    if (current_token(stream)->type == ASSIGN) {
 
-      if (current_token(stream)->type != ASSIGN) {
+      if (stream->current < 1 || get_token(stream, -1)->type != NAME) {
         // Gérer l'erreur
-        printf("INSTRUCTION ATTENDUE.\n");
+        printf("ASSIGNATION D'UNE VALEUR A AUTRE CHOSE QU'UNE VARIABLE.\n");
         return NULL;
       }
 
@@ -508,7 +514,7 @@ Statement * parse_statement(TokenStream * stream) {
         return NULL;
       }
 
-      if (value->type == EMPTY) {
+      if (value->type == EMPTY_EXPRESSION) {
         // Gérer l'erreur
         printf("PAS DE VALEUR !\n");
         free_token_stack(token_stack);
@@ -541,7 +547,7 @@ Statement * parse_statement(TokenStream * stream) {
 
       Expression * condition = parse_expression(token_stack);
 
-      if (condition->type == EMPTY) {
+      if (condition->type == EMPTY_EXPRESSION) {
         // Gérer l'erreur
         printf("PAS DE CONDITION !\n");
         free_token_stack(token_stack);
@@ -549,7 +555,7 @@ Statement * parse_statement(TokenStream * stream) {
         return NULL;
       }
 
-      if (get_token(stream, -1)->type != LBRACE) {
+      if (current_token(stream)->type != LBRACE) {
         // Gérer l'erreur
         printf("PAS D'ACCOLADE !\n");
         free_token_stack(token_stack);
@@ -565,8 +571,6 @@ Statement * parse_statement(TokenStream * stream) {
         return NULL;
       }
 
-      next_token(stream); // Passe au token suivant afin de ne pas rester bloqué dessus si c'est une accolade.
-
       if ((statement->conditional_branch = malloc(sizeof(ConditionalBranch))) == NULL) {
         fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_3\n\nErreur d'allocation de la branche conditionnelle.\n");
         return NULL;
@@ -577,6 +581,7 @@ Statement * parse_statement(TokenStream * stream) {
       statement->type = CONDITIONAL_BRANCH;
 
       if (next_token(stream)->type == ELSE) {
+        next_token(stream);
         if (current_token(stream)->type == LBRACE || current_token(stream)->type == IF) {
           if ((statement->conditional_branch->false_branch = parse(stream)) == NULL) {
             // free program
@@ -611,13 +616,24 @@ Statement * parse_statement(TokenStream * stream) {
         return NULL;
       }
 
-      print_token(get_token(stream, -1));
-      if (get_token(stream, -1)->type != COMMA) {
+      if (statement->for_loop->initial_statement->type != EMPTY_STATEMENT && current_token(stream)->type != COMMA) {
         // Erreur de syntaxe : pas de virgule !
-        printf("PAS DE VIRGULES !\n");
+        printf("ERREUR DE SYNTAXE : VIRGULE ATTENDUE ! 1\n");
         free(statement->for_loop);
         free(statement);
         return NULL;
+      }
+
+      if (statement->for_loop->initial_statement->type == EMPTY_STATEMENT && current_token(stream)->type == COMMA) {
+        // Erreur de syntaxe : instruction attendue
+        printf("ERREUR DE SYNTAXE : INSTRUCTION ATTENDUE !\n");
+        free(statement->for_loop);
+        free(statement);
+        return NULL;
+      }
+
+      if (statement->for_loop->initial_statement->type != EMPTY_STATEMENT) {
+        next_token(stream);
       }
 
       TokenStack * token_stack = infix_to_postfix(stream);
@@ -637,16 +653,23 @@ Statement * parse_statement(TokenStream * stream) {
         return NULL;
       }
 
-      print_token(get_token(stream, -1));
-
-      if (get_token(stream, -1)->type != COMMA) {
-        // Erreur de syntaxe : pas de virgule !
-        printf("PAS DE VIRGULES !\n");
+      if (statement->for_loop->condition->type == EMPTY_EXPRESSION) {
+        printf("ERREUR DE SYNTAXE : EXPRESSION ATTENDUE !\n");
+        free_token_stack(token_stack);
         free(statement->for_loop);
         free(statement);
         return NULL;
       }
 
+      if (current_token(stream)->type != COMMA) {
+        // Erreur de syntaxe : pas de virgule !
+        printf("ERREUR DE SYNTAXE : VIRGULE ATTENDUE ! 3\n");
+        free(statement->for_loop);
+        free(statement);
+        return NULL;
+      }
+
+      next_token(stream);
 
       statement->for_loop->modifier = parse_statement(stream);
 
@@ -657,11 +680,106 @@ Statement * parse_statement(TokenStream * stream) {
         return NULL;
       }
 
+      if (statement->for_loop->modifier->type == EMPTY_STATEMENT || statement->for_loop->modifier->type == PROGRAM) {
+        printf("INSTRUCTION DE MODIFICATION ATTENDUE !\n");
+        free_token_stack(token_stack);
+        free(statement->for_loop);
+        free(statement);
+        return NULL;
+      }
+
+      next_token(stream);
+
+      Program * for_body = parse(stream);
+
+      if (for_body == NULL) {
+        free_token_stack(token_stack);
+        free(statement->for_loop);
+        free(statement);
+        return NULL;
+      }
+
       statement->type = FOR_LOOP;
-      statement->for_loop->program = parse(stream);
+      statement->for_loop->program = for_body;
       break;
 
     }
+
+    if (current_token(stream)->type == WHILE) {
+      next_token(stream);
+
+      if ((statement->while_loop = malloc(sizeof(WhileLoop))) == NULL) {
+        fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_5\n\nErreur d'allocation de la boucle indefinie.\n");
+        return NULL;
+      }
+
+      TokenStack * token_stack = infix_to_postfix(stream);
+
+      if (token_stack == NULL) {
+        free(statement->while_loop);
+        free(statement);
+        return NULL;
+      }
+
+      statement->while_loop->condition = parse_expression(token_stack);
+
+      if (statement->while_loop->condition == NULL) {
+        free_token_stack(token_stack);
+        free(statement->while_loop);
+        free(statement);
+        return NULL;
+      }
+
+      if (statement->while_loop->condition->type == EMPTY_EXPRESSION) {
+        printf("CONDITION ATTENDUE\n");
+        free_token_stack(token_stack);
+        free(statement->while_loop);
+        free(statement);
+        return NULL;
+      }
+
+      if (current_token(stream)->type != LBRACE) {
+        printf("ERREUR DE SYNTAXE : EXPRESSION ATTENDUE\n");
+        free_token_stack(token_stack);
+        free(statement->while_loop);
+        free(statement);
+        return NULL;
+      }
+
+      next_token(stream);
+
+      Program * while_body = parse(stream);
+
+      if (while_body == NULL) {
+        free_token_stack(token_stack);
+        free(statement->while_loop);
+        free(statement);
+        return NULL;
+      }
+
+      statement->type = FOR_LOOP;
+      statement->while_loop->program = while_body;
+      break;
+
+    }
+
+    if (current_token(stream)->type == BREAK || current_token(stream)->type == CONTINUE) {
+      if (next_token(stream)->type != SEMICOLON) {
+        printf("ERREUR DE SYNTAXE : ';' ATTENDU APRES INSTRUCTION DE BOUCLE.\n");
+        return NULL;
+      }
+
+      if ((statement->loop_instruction = malloc(sizeof(LoopInstruction))) == NULL) {
+        fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_6\n\nErreur d'allocation de la boucle indefinie.\n");
+        return NULL;
+      }
+
+      statement->type = LOOP_INSTRUCTION;
+      *(statement->loop_instruction) = (current_token(stream)->type == BREAK) ? BREAK_LOOP : CONTINUE_LOOP;
+      break;
+    }
+
+    next_token(stream);
   }
 
   return statement;
@@ -721,6 +839,7 @@ Program * parse(TokenStream * stream){
       }
 
       instruction->type = EXPRESSION;
+
       instruction->expression = parse_expression(stack);
 
       if (instruction->expression == NULL) {
@@ -732,7 +851,10 @@ Program * parse(TokenStream * stream){
       }
 
       add_instruction(program, instruction);
+      continue;
     }
+
+    next_token(stream);
 
   }
 
