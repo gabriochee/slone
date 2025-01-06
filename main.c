@@ -7,6 +7,7 @@
 #include "headers/lexer_test.h"
 #include "headers/parser.h"
 #include "headers/parser_test.h"
+#include "headers/error.h"
 
 int main(const int argc, const char * argv[]){
 
@@ -40,18 +41,13 @@ int main(const int argc, const char * argv[]){
   rewind(file);
   fread(file_content, sizeof(char), file_size, file);
 
+  set_program_content(file_content);
+
   TokenStream * stream = new_token_stream(file_content);
 
   Program * program = parse(stream);
 
-  if (program != NULL) {
-    for (int i = 0; i < program->current_instruction; i++) {
-      if (program->instructions[i]->type == STATEMENT) {
-        //print_statement(program->instructions[i]->statement);
-      }
-    }
-  }
-
+  free(program);
 
   fclose(file);
   free_token_stream(stream);

@@ -1,13 +1,11 @@
-#include <stdio.h>
-
-#include "lexer.h"
-
 #ifndef ERROR_H
 #define ERROR_H
 
-char * file_content = NULL;
+#include "lexer.h"
 
-void set_file_content(const char * source);
-void print_error(const char * error_message, Token * problematic_token);
+extern char * program_string_content; // extern évite que le compilateur pense qu'on déclare 2 fois la même variable.
 
-#endif //ERROR_H
+void set_program_content(const char * program_string);
+void print_error(const char* error_type, const char * error_message, Token * problematic_token);
+
+#endif

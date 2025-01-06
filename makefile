@@ -11,8 +11,8 @@ CFLAGS  = -Wall -Werror
 
 # Il faut alléger ce Makefile mon vier ! TODO : utiliser les paramètres des commandes make
 
-all: main.o lexer.o lexer_test.o parser.o parser_test.o
-	$(CC) $(CFLAGS) main.o lexer.o lexer_test.o parser.o parser_test.o -o interpreter
+all: main.o lexer.o lexer_test.o parser.o parser_test.o error.o
+	$(CC) $(CFLAGS) main.o lexer.o lexer_test.o parser.o parser_test.o error.o -o interpreter
 
 main.o: main.c
 	$(CC) $(CFLAGS) -c main.c -o main.o
@@ -28,6 +28,9 @@ parser.o: sources/parser.c
 
 parser_test.o: sources/parser_test.c
 	$(CC) $(CFLAGS) -c sources/parser_test.c -o parser_test.o
+
+error.o: sources/error.c
+	$(CC) $(CFLAGS) -c sources/error.c -o error.o
 
 clean:
 	rm *.o

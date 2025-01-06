@@ -4,11 +4,7 @@
 
 #include "../headers/lexer.h"
 #include "../headers/parser.h"
-
-#include <ctype.h>
-
-#include "../headers/lexer_test.h"
-#include "../headers/parser_test.h"
+#include "../headers/error.h"
 
 #define VALUE_MASK               0b000000000000000000001111111
 #define NUMBER_MASK              0b000000000000000000000000110
@@ -320,11 +316,12 @@ Expression * parse_expression(TokenStack * postfix_expression){
         if (top_token->type == FLOATING_NUMBER) {
           value->type = FLOAT;
           value->float_value = strtold(top_token->value, NULL);
+
           if (errno == ERANGE) {
-            // Message d'erreur : fonction pretty_error
-            fprintf(stderr, "Trop grand !\n");
+            print_error("ERREUR DE CAPACITE", "Le nombre entrée est trop grand.", top_token);
             return NULL;
           }
+
         } else {
           value->type = INTEGER;
           value->integer_value = strtoll(top_token->value, NULL, 10);
@@ -334,8 +331,7 @@ Expression * parse_expression(TokenStack * postfix_expression){
             value->unsigned_integer_value = strtoull(top_token->value, NULL, 10);
           }
           if (errno == ERANGE) {
-            // Message d'erreur : fonction pretty_error
-            fprintf(stderr, "Trop grand !\n");
+            print_error("ERREUR DE CAPACITE", "Le nombre entrée est trop grand.", top_token);
             return NULL;
           }
         }
@@ -490,11 +486,15 @@ Statement * parse_statement(TokenStream * stream) {
 
     if (current_token(stream)->type == ASSIGN) {
 
-      if (stream->current < 1 || get_token(stream, -1)->type != NAME) {
-        // Gérer l'erreur
-        printf("ASSIGNATION D'UNE VALEUR A AUTRE CHOSE QU'UNE VARIABLE.\n");
-        return NULL;
-      }
+        if (stream->current < 1) {
+          // prendre en charge le cas où c'est au début donc Token NULL dans la fonction print_error.
+          return NULL;
+        }
+
+        if (get_token(stream, -1)->type != NAME) {
+          print_error("ERREUR DE SYNTAXE", "Il est possible d'assigner des valeurs uniquement à des variables.", get_token(stream, -1));
+          return NULL;
+        }
 
       next_token(stream);
 
@@ -515,8 +515,7 @@ Statement * parse_statement(TokenStream * stream) {
       }
 
       if (value->type == EMPTY_EXPRESSION) {
-        // Gérer l'erreur
-        printf("PAS DE VALEUR !\n");
+        print_error("ERREUR DE SYNTAXE", "L'assignation n'a pas de valeur.", top_token_stack(token_stack));
         free_token_stack(token_stack);
         free(statement);
         return NULL;
@@ -548,8 +547,7 @@ Statement * parse_statement(TokenStream * stream) {
       Expression * condition = parse_expression(token_stack);
 
       if (condition->type == EMPTY_EXPRESSION) {
-        // Gérer l'erreur
-        printf("PAS DE CONDITION !\n");
+        print_error("ERREUR DE SYNTAXE", "Une instruction if nécessite une condition.", top_token_stack(token_stack));
         free_token_stack(token_stack);
         free(statement);
         return NULL;
