@@ -11,7 +11,7 @@ void set_program_content(const char * program_string){
 }
 
 void print_error(const char * error_type, const char * error_message, Token * problematic_token){
-  unsigned int token_position, last_return_position, line_number;
+  unsigned int token_position, last_return_position = 0, line_number;
 
   token_position = problematic_token->position;
   line_number = 1;
@@ -28,10 +28,10 @@ void print_error(const char * error_type, const char * error_message, Token * pr
   unsigned int current = token_position, program_part_size = 0;
 
   if (problematic_token->value == NULL){
-  	while (!isspace(program_string_content[current]) && program_string_content[current] != ';'){
+  	do {
     	fputc(program_string_content[current++], stderr);
         program_part_size++;
-  	}
+  	} while (!isspace(program_string_content[current]) && program_string_content[current] != ';' && program_string_content[current] != '\0');
     fputc('\n', stderr);
   } else {
 	fprintf(stderr, "%s\n", problematic_token->value);

@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "../headers/lexer.h"
+#include "../headers/lexer_test.h"
 #include "../headers/parser.h"
 #include "../headers/error.h"
 
@@ -260,8 +261,8 @@ TokenStack * infix_to_postfix(TokenStream * stream) {
       while (!operator_stack->is_empty && top_token_stack(operator_stack)->type != LPAREN) {
         push_token_stack(output_stack, pop_token_stack(operator_stack));
       }
-      if (top_token_stack(operator_stack)->type != LPAREN) {
-        // Insérer message d'erreur parenthèse fermante en trop.
+      if (top_token_stack(operator_stack)->type != LPAREN || operator_stack->is_empty) {
+        print_error("ERREUR DE SYNTAXE", "Le nombre de parenthèses ouvertes et fermées ne correspond pas.", token);
         free_token_stack(operator_stack);
         free_token_stack(output_stack);
         return NULL;
@@ -280,6 +281,12 @@ TokenStack * infix_to_postfix(TokenStream * stream) {
   }
 
   while (!operator_stack->is_empty) {
+    if (top_token_stack(operator_stack)->type == LPAREN) {
+        print_error("ERREUR DE SYNTAXE", "Le nombre de parenthèses ouvertes et fermées ne correspond pas.", top_token_stack(operator_stack));
+        free_token_stack(operator_stack);
+        free_token_stack(output_stack);
+        return NULL;
+    }
     push_token_stack(output_stack, pop_token_stack(operator_stack));
   }
 
@@ -478,7 +485,6 @@ Statement * parse_statement(TokenStream * stream) {
   while (current_token(stream)->type != END && is_token_statement(current_token(stream))) {
 
     if (current_token(stream)->type == LBRACE) {
-      next_token(stream);
       statement->type = PROGRAM;
       statement->program = parse(stream);
       return statement;
@@ -487,7 +493,7 @@ Statement * parse_statement(TokenStream * stream) {
     if (current_token(stream)->type == ASSIGN) {
 
         if (stream->current < 1) {
-          // prendre en charge le cas où c'est au début donc Token NULL dans la fonction print_error.
+          print_error("ERREUR DE SYNTAXE", "L'assignation n'a pas de valeur.", current_token(stream));
           return NULL;
         }
 
@@ -515,7 +521,12 @@ Statement * parse_statement(TokenStream * stream) {
       }
 
       if (value->type == EMPTY_EXPRESSION) {
-        print_error("ERREUR DE SYNTAXE", "L'assignation n'a pas de valeur.", top_token_stack(token_stack));
+        Token* token_to_print = current_token(stream);
+        if (token_to_print->type == END) {
+          print_error("ERREUR DE SYNTAXE", "L'assignation n'a pas de valeur.", get_token(stream, -1));
+        } else {
+          print_error("ERREUR DE SYNTAXE", "L'assignation n'a pas de valeur.", token_to_print);
+        }
         free_token_stack(token_stack);
         free(statement);
         return NULL;
@@ -547,15 +558,14 @@ Statement * parse_statement(TokenStream * stream) {
       Expression * condition = parse_expression(token_stack);
 
       if (condition->type == EMPTY_EXPRESSION) {
-        print_error("ERREUR DE SYNTAXE", "Une instruction if nécessite une condition.", top_token_stack(token_stack));
+        print_error("ERREUR DE SYNTAXE", "Une instruction if nécessite une condition.", current_token(stream));
         free_token_stack(token_stack);
         free(statement);
         return NULL;
       }
 
       if (current_token(stream)->type != LBRACE) {
-        // Gérer l'erreur
-        printf("PAS D'ACCOLADE !\n");
+        print_error("ERREUR DE SYNTAXE", "Caractère inattendue trouvé, accolade ouverte attendue.", current_token(stream));
         free_token_stack(token_stack);
         free(statement);
         return NULL;
@@ -588,8 +598,7 @@ Statement * parse_statement(TokenStream * stream) {
             return NULL;
           }
         } else {
-          // Gérer l'erreur
-          printf("MAUVAISE SYNTAXE APRES ELSE.\n");
+          print_error("ERREUR DE SYNTAXE", "Caractères inattendus après la branche else.", current_token(stream));
           free_token_stack(token_stack);
           free(statement);
           return NULL;
@@ -791,7 +800,13 @@ Program * parse(TokenStream * stream){
     return NULL;
   }
 
-  while (current_token(stream)->type != END && current_token(stream)->type != RBRACE) {
+  int in_brace = current_token(stream)->type == LBRACE;
+
+  if (in_brace) {
+    next_token(stream);
+  }
+
+  while (current_token(stream)->type != END) {
     Instruction * instruction = NULL;
 
     if (is_token_statement(current_token(stream))) {
@@ -815,6 +830,7 @@ Program * parse(TokenStream * stream){
       }
 
       add_instruction(program, instruction);
+      next_token(stream);
       continue;
     }
 
@@ -849,11 +865,11 @@ Program * parse(TokenStream * stream){
       }
 
       add_instruction(program, instruction);
+      next_token(stream);
       continue;
     }
 
     next_token(stream);
-
   }
 
   return program;
