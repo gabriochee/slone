@@ -5,6 +5,7 @@
 #include "../headers/lexer.h"
 #include "../headers/lexer_test.h"
 #include "../headers/parser.h"
+#include "../headers/parser_test.h"
 #include "../headers/error.h"
 
 #define VALUE_MASK               0b000000000000000000001111111
@@ -484,12 +485,6 @@ Statement * parse_statement(TokenStream * stream) {
 
   while (current_token(stream)->type != END && is_token_statement(current_token(stream))) {
 
-    if (current_token(stream)->type == LBRACE) {
-      statement->type = PROGRAM;
-      statement->program = parse(stream);
-      return statement;
-    }
-
     if (current_token(stream)->type == ASSIGN) {
 
         if (stream->current < 1) {
@@ -753,8 +748,6 @@ Statement * parse_statement(TokenStream * stream) {
         return NULL;
       }
 
-      next_token(stream);
-
       Program * while_body = parse(stream);
 
       if (while_body == NULL) {
@@ -800,13 +793,9 @@ Program * parse(TokenStream * stream){
     return NULL;
   }
 
-  int in_brace = current_token(stream)->type == LBRACE;
+  char in_brace = get_token(stream, -1)->type == LBRACE;
 
-  if (in_brace) {
-    next_token(stream);
-  }
-
-  while (current_token(stream)->type != END) {
+  while (current_token(stream)->type != END && current_token(stream)->type != RBRACE) {
     Instruction * instruction = NULL;
 
     if (is_token_statement(current_token(stream))) {
@@ -820,7 +809,37 @@ Program * parse(TokenStream * stream){
       }
 
       instruction->type = STATEMENT;
-      instruction->statement = parse_statement(stream);
+
+      if (current_token(stream)->type == LBRACE) {
+        Statement * statement = NULL;
+
+        if ((statement = malloc(sizeof(Statement))) == NULL) {
+          fprintf(stderr, "ERREUR::PARSER::PARSE::ALLOCATION_3\n\nErreur d'allocation de l'instruction.\n");
+          return NULL;
+        }
+
+        next_token(stream);
+        instruction->statement = statement;
+        statement->program = parse(stream);
+
+        if (statement->program == NULL) {
+          // free program
+          free(statement);
+          free(instruction);
+          return NULL;
+        }
+
+        if (current_token(stream)->type != RBRACE) {
+          print_error("ERREUR DE SYNTAXE", "Une ou plusieurs accolades ouvrantes n'ont pas été fermées.", get_token(stream, -1));
+          // free program
+          // free statement program
+          free(statement);
+          free(instruction);
+          return NULL;
+        }
+      } else {
+        instruction->statement = parse_statement(stream);
+      }
 
       if (instruction->statement == NULL) {
         free(instruction);
@@ -830,8 +849,6 @@ Program * parse(TokenStream * stream){
       }
 
       add_instruction(program, instruction);
-      next_token(stream);
-      continue;
     }
 
     if (is_token_expression(current_token(stream))) {
@@ -865,11 +882,15 @@ Program * parse(TokenStream * stream){
       }
 
       add_instruction(program, instruction);
-      next_token(stream);
-      continue;
     }
 
     next_token(stream);
+  }
+
+  if (current_token(stream)->type == RBRACE && !in_brace) {
+    print_error("ERREUR DE SYNTAXE", "Une ou plusieurs accolades fermantes ne correspondent à aucun bloc de code.", current_token(stream));
+    // free program
+    return NULL;
   }
 
   return program;
