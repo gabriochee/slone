@@ -619,16 +619,14 @@ Statement * parse_statement(TokenStream * stream) {
       }
 
       if (statement->for_loop->initial_statement->type != EMPTY_STATEMENT && current_token(stream)->type != COMMA) {
-        // Erreur de syntaxe : pas de virgule !
-        printf("ERREUR DE SYNTAXE : VIRGULE ATTENDUE ! 1\n");
+        print_error("ERREUR DE SYNTAXE", "L'initialisation d'une boucle for doit être suivie d'une virgule." , current_token(stream));
         free(statement->for_loop);
         free(statement);
         return NULL;
       }
 
       if (statement->for_loop->initial_statement->type == EMPTY_STATEMENT && current_token(stream)->type == COMMA) {
-        // Erreur de syntaxe : instruction attendue
-        printf("ERREUR DE SYNTAXE : INSTRUCTION ATTENDUE !\n");
+        print_error("ERREUR DE SYNTAXE", "Une virgule est présente; Or aucune initialisation n'a été déclarée pour la boucle for.\nRetirer la virgule pour ne plus rencontrer cette erreur." , current_token(stream));
         free(statement->for_loop);
         free(statement);
         return NULL;
@@ -656,7 +654,7 @@ Statement * parse_statement(TokenStream * stream) {
       }
 
       if (statement->for_loop->condition->type == EMPTY_EXPRESSION) {
-        printf("ERREUR DE SYNTAXE : EXPRESSION ATTENDUE !\n");
+        print_error("ERREUR DE SYNTAXE", "L'expression attendue pour la boucle for est vide.", current_token(stream));
         free_token_stack(token_stack);
         free(statement->for_loop);
         free(statement);
@@ -664,8 +662,7 @@ Statement * parse_statement(TokenStream * stream) {
       }
 
       if (current_token(stream)->type != COMMA) {
-        // Erreur de syntaxe : pas de virgule !
-        printf("ERREUR DE SYNTAXE : VIRGULE ATTENDUE ! 3\n");
+        print_error("ERREUR DE SYNTAXE", "Une virgule attendue pour séparer la condition du modificateur de la boucle for n'est pas présente.", current_token(stream));
         free(statement->for_loop);
         free(statement);
         return NULL;
@@ -683,7 +680,7 @@ Statement * parse_statement(TokenStream * stream) {
       }
 
       if (statement->for_loop->modifier->type == EMPTY_STATEMENT || statement->for_loop->modifier->type == PROGRAM) {
-        printf("INSTRUCTION DE MODIFICATION ATTENDUE !\n");
+        print_error("ERREUR DE SYNTAXE", "Une instruction de modification est attendue pour la boucle for.", current_token(stream));
         free_token_stack(token_stack);
         free(statement->for_loop);
         free(statement);
@@ -733,7 +730,7 @@ Statement * parse_statement(TokenStream * stream) {
       }
 
       if (statement->while_loop->condition->type == EMPTY_EXPRESSION) {
-        printf("CONDITION ATTENDUE\n");
+        print_error("ERREUR DE SYNTAXE", "Une condition est attendue pour la boucle while, mais il n'y en a pas.", current_token(stream));
         free_token_stack(token_stack);
         free(statement->while_loop);
         free(statement);
@@ -741,7 +738,7 @@ Statement * parse_statement(TokenStream * stream) {
       }
 
       if (current_token(stream)->type != LBRACE) {
-        printf("ERREUR DE SYNTAXE : EXPRESSION ATTENDUE\n");
+        print_error("ERREUR DE SYNTAXE", "Une accolade ouvrant le corps de la boucle while est attendue.", current_token(stream));
         free_token_stack(token_stack);
         free(statement->while_loop);
         free(statement);
@@ -757,17 +754,13 @@ Statement * parse_statement(TokenStream * stream) {
         return NULL;
       }
 
-      statement->type = FOR_LOOP;
+      statement->type = WHILE_LOOP;
       statement->while_loop->program = while_body;
       break;
 
     }
 
     if (current_token(stream)->type == BREAK || current_token(stream)->type == CONTINUE) {
-      if (next_token(stream)->type != SEMICOLON) {
-        printf("ERREUR DE SYNTAXE : ';' ATTENDU APRES INSTRUCTION DE BOUCLE.\n");
-        return NULL;
-      }
 
       if ((statement->loop_instruction = malloc(sizeof(LoopInstruction))) == NULL) {
         fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_6\n\nErreur d'allocation de la boucle indefinie.\n");
@@ -842,6 +835,19 @@ Program * parse(TokenStream * stream){
       }
 
       if (instruction->statement == NULL) {
+        free(instruction);
+        free(program->instructions);
+        free(program);
+        return NULL;
+      }
+
+      print_statement(instruction->statement);
+      print_token(current_token(stream));
+
+      if (current_token(stream)->type != SEMICOLON && instruction->statement->type == LOOP_INSTRUCTION) {
+        print_error("ERREUR DE SYNTAXE", "Un point virgule doit obligatoirement suivre cette instruction.", current_token(stream));
+        // free program
+        // free statement program
         free(instruction);
         free(program->instructions);
         free(program);
