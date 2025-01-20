@@ -566,6 +566,8 @@ Statement * parse_statement(TokenStream * stream) {
         return NULL;
       }
 
+      next_token(stream);
+
       Program * true_branch = parse(stream);
 
       if (true_branch == NULL) {
@@ -745,6 +747,8 @@ Statement * parse_statement(TokenStream * stream) {
         return NULL;
       }
 
+      next_token(stream);
+
       Program * while_body = parse(stream);
 
       if (while_body == NULL) {
@@ -840,9 +844,6 @@ Program * parse(TokenStream * stream){
         free(program);
         return NULL;
       }
-
-      print_statement(instruction->statement);
-      print_token(current_token(stream));
 
       if (current_token(stream)->type != SEMICOLON && instruction->statement->type == LOOP_INSTRUCTION) {
         print_error("ERREUR DE SYNTAXE", "Un point virgule doit obligatoirement suivre cette instruction.", current_token(stream));
