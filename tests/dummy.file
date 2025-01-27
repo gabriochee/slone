@@ -1,6 +1,6 @@
 if 4 + 5 == 9{
 
-} else if true {
+} else if not (4 + 5 == 9) {
     x = 9;
     {
         y = 10;

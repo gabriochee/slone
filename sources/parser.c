@@ -31,13 +31,10 @@ void add_instruction(Program * program, Instruction * instruction) {
   }
 }
 
-void free_program(Program * program) {
-  free(program->instructions);
-  free_variable_dictionnary(program->variable_dictionary);
-  free(program);
-}
-
 void free_variable_dictionnary(VariableDictionnary * variable_dictionnary) {
+  for (int i = 0; i < variable_dictionnary->current; i++) {
+    free_variable(variable_dictionnary->variables[i]);
+  }
   free(variable_dictionnary->variables);
   free(variable_dictionnary);
 }
@@ -211,6 +208,163 @@ void free_token_stack(TokenStack * token_stack) {
   }
 
   free(token_stack);
+}
+
+void free_value(Value * value) {
+  if (value == NULL) {
+    return;
+  }
+
+  if (value->type == STRING) {
+    free(value->string_value);
+  }
+
+  free(value);
+}
+
+void free_variable(Variable * variable) {
+  free_value(variable->value);
+  free(variable->name);
+  free(variable);
+}
+
+void free_binary_operator(BinaryOperator * binary_operator) {
+  if (binary_operator == NULL) {
+    return;
+  }
+
+  free_expression(binary_operator->left_expression);
+  free_expression(binary_operator->right_expression);
+  free(binary_operator);
+}
+
+void free_unary_operator(UnaryOperator * unary_operator) {
+  if (unary_operator == NULL) {
+    return;
+  }
+
+  free_expression(unary_operator->expression);
+  free(unary_operator);
+}
+
+void free_expression(Expression * expression) {
+  if (expression == NULL) {
+    return;
+  }
+
+  switch (expression->type) {
+    case VALUE:
+      free_value(expression->value);
+      break;
+    case VARIABLE:
+      free_variable(expression->variable);
+      break;
+    case BINARY_OPERATION:
+      free_binary_operator(expression->binary_operator);
+      break;
+    case UNARY_OPERATION:
+      free_unary_operator(expression->unary_operator);
+      break;
+    case EXPR:
+      free_expression(expression);
+      break;
+  }
+
+  free(expression);
+}
+
+void free_assignment(Assignment * assignment) {
+  if (assignment == NULL) {
+    return;
+  }
+
+  free_variable(assignment->variable);
+  free_expression(assignment->value);
+  free(assignment);
+}
+
+void free_conditional_branch(ConditionalBranch * conditional_branch) {
+  if (conditional_branch == NULL) {
+    return;
+  }
+
+  free_expression(conditional_branch->expression);
+  free_program(conditional_branch->true_branch);
+  free_program(conditional_branch->false_branch);
+  free(conditional_branch);
+}
+
+void free_while_loop(WhileLoop * while_loop) {
+  if (while_loop == NULL) {
+    return;
+  }
+
+  free_expression(while_loop->condition);
+  free_program(while_loop->program);
+  free(while_loop);
+}
+
+void free_for_loop(ForLoop * for_loop) {
+  if (for_loop == NULL) {
+    return;
+  }
+
+  free_statement(for_loop->initial_statement);
+  free_expression(for_loop->condition);
+  free_statement(for_loop->modifier);
+  free_program(for_loop->program);
+  free(for_loop);
+}
+
+void free_statement(Statement * statement) {
+  if (statement == NULL) {
+    return;
+  }
+
+  switch (statement->type) {
+    case PROGRAM:
+      free_program(statement->program);
+      break;
+    case ASSIGNMENT:
+      free_assignment(statement->assignment);
+      break;
+    case CONDITIONAL_BRANCH:
+      free_conditional_branch(statement->conditional_branch);
+      break;
+    case FOR_LOOP:
+      free_for_loop(statement->for_loop);
+      break;
+    case WHILE_LOOP:
+      free_while_loop(statement->while_loop);
+      break;
+    case LOOP_INSTRUCTION:
+      free(statement->loop_instruction);
+      break;
+  }
+
+  free(statement);
+}
+
+void free_instruction(Instruction * instruction) {
+  switch (instruction->type) {
+    case STATEMENT:
+      free_statement(instruction->statement);
+      break;
+    case EXPRESSION:
+      free_expression(instruction->expression);
+      break;
+  }
+
+  free(instruction);
+}
+
+void free_program(Program * program) {
+  for (int i = 0; i < program->current_instruction; i++) {
+    free_instruction(program->instructions[i]);
+  }
+  free(program->instructions);
+  free_variable_dictionnary(program->variable_dictionary);
+  free(program);
 }
 
 // parse_expression cas :

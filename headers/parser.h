@@ -161,7 +161,7 @@ struct Value{
 };
 
 struct Variable{
-  //Type type;
+  Value * value;
   char * name;
 };
 
@@ -264,17 +264,31 @@ Variable * get_variable(VariableDictionnary * variable_dictionary, char * name);
 
 VariableDictionnary * new_variable_dictionary();
 
-void free_program(Program * program);
 void add_instruction(Program * program, Instruction * instruction);
+void free_instruction(Instruction * instruction);
 
 void push_token_stack(TokenStack * token_stack, Token * token);
 void free_token_stack(TokenStack * token_stack);
 
 void free_variable_dictionnary(VariableDictionnary * variable_dictionnary);
-void add_variable_dictionnary(VariableDictionnary * dictionary, Variable * variable);
+void add_to_variable_dictionnary(VariableDictionnary * dictionary, Variable * variable);
 
 int is_token_expression(Token * token);
 int is_token_statement(Token * token);
 short operator_precedence(Token * token);
+
+void free_value(Value * value);
+void free_variable(Variable * variable);
+void free_binary_operator(BinaryOperator * binary_operator);
+void free_unary_operator(UnaryOperator * unary_operator);
+void free_expression(Expression * expression);
+
+void free_statement(Statement * statement);
+void free_assignment(Assignment * assignment);
+void free_conditional_branch(ConditionalBranch * conditional_branch);
+void free_for_loop(ForLoop * for_loop);
+void free_while_loop(WhileLoop * while_loop);
+
+void free_program(Program * program);
 
 #endif
