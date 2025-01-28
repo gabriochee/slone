@@ -34,6 +34,7 @@ void add_instruction(Program * program, Instruction * instruction) {
 void free_variable_dictionnary(VariableDictionnary * variable_dictionnary) {
   for (int i = 0; i < variable_dictionnary->current; i++) {
     free_variable(variable_dictionnary->variables[i]);
+    free_value(variable_dictionnary->values[i]);
   }
   free(variable_dictionnary->variables);
   free(variable_dictionnary);
@@ -158,7 +159,7 @@ VariableDictionnary * new_variable_dictionary() {
   VariableDictionnary * dictionary = malloc(sizeof(VariableDictionnary));
 
   if (dictionary != NULL) {
-    if ((dictionary->variables = malloc(sizeof(Variable *))) != NULL) {
+    if ((dictionary->variables = malloc(sizeof(Variable *))) != NULL && (dictionary->values = malloc(sizeof(Value *))) != NULL) {
       dictionary->capacity = 1;
       dictionary->current = 0;
       return dictionary;
@@ -223,7 +224,10 @@ void free_value(Value * value) {
 }
 
 void free_variable(Variable * variable) {
-  free_value(variable->value);
+  if (variable == NULL) {
+    return;
+  }
+
   free(variable->name);
   free(variable);
 }
@@ -267,6 +271,8 @@ void free_expression(Expression * expression) {
       break;
     case EXPR:
       free_expression(expression);
+      break;
+    default:
       break;
   }
 
@@ -340,12 +346,18 @@ void free_statement(Statement * statement) {
     case LOOP_INSTRUCTION:
       free(statement->loop_instruction);
       break;
+    default:
+      break;
   }
 
   free(statement);
 }
 
 void free_instruction(Instruction * instruction) {
+  if (instruction == NULL) {
+    return;
+  }
+
   switch (instruction->type) {
     case STATEMENT:
       free_statement(instruction->statement);
@@ -359,9 +371,14 @@ void free_instruction(Instruction * instruction) {
 }
 
 void free_program(Program * program) {
+  if (program == NULL) {
+    return;
+  }
+
   for (int i = 0; i < program->current_instruction; i++) {
     free_instruction(program->instructions[i]);
   }
+
   free(program->instructions);
   free_variable_dictionnary(program->variable_dictionary);
   free(program);
@@ -469,6 +486,7 @@ Expression * parse_expression(TokenStack * postfix_expression){
 
       if ((value = malloc(sizeof(Value))) == NULL) {
         fprintf(stderr, "ERREUR::PARSER::PARSE_EXPRESSION::ALLOCATION_2\n\nErreur d'allocation de la valeur.\n");
+        free_expression(expression);
         return NULL;
       }
 
@@ -481,6 +499,8 @@ Expression * parse_expression(TokenStack * postfix_expression){
 
           if (errno == ERANGE) {
             print_error("ERREUR DE CAPACITE", "Le nombre entrée est trop grand.", top_token);
+            free_value(value);
+            free_expression(expression);
             return NULL;
           }
 
@@ -494,6 +514,8 @@ Expression * parse_expression(TokenStack * postfix_expression){
           }
           if (errno == ERANGE) {
             print_error("ERREUR DE CAPACITE", "Le nombre entrée est trop grand.", top_token);
+            free_value(value);
+            free_expression(expression);
             return NULL;
           }
         }
@@ -511,12 +533,13 @@ Expression * parse_expression(TokenStack * postfix_expression){
       } else if (top_token->type == NAME) {
         Variable * variable = NULL;
 
-        if ((variable = malloc(sizeof(Variable))) == NULL) {
+        if ((variable = malloc(sizeof(Variable))) == NULL || (variable->name = malloc(sizeof(char) * (strlen(top_token->value) + 1))) == NULL) {
           fprintf(stderr, "ERREUR::PARSER::PARSE_EXPRESSION::ALLOCATION_3\n\nErreur d'allocation de la variable.\n");
+          free_expression(expression);
           return NULL;
         }
 
-        variable->name = top_token->value;
+        strcpy(variable->name, top_token->value);
 
         expression->type = VARIABLE;
         expression->variable = variable;
@@ -529,6 +552,7 @@ Expression * parse_expression(TokenStack * postfix_expression){
 
       if ((binary_operator = malloc(sizeof(BinaryOperator))) == NULL) {
         fprintf(stderr, "ERREUR::PARSER::PARSE_EXPRESSION::ALLOCATION_3\n\nErreur d'allocation de l'opérateur binaire.\n");
+        free_expression(expression);
         return NULL;
       }
 
@@ -591,12 +615,18 @@ Expression * parse_expression(TokenStack * postfix_expression){
 
         binary_operator->left_expression = left_expression;
         binary_operator->right_expression = right_expression;
+      } else {
+        free_expression(left_expression);
+        free_expression(right_expression);
+        free_binary_operator(binary_operator);
+        return NULL;
       }
     } else if (token_mask & UNARY_OPERATOR_MASK) {
       UnaryOperator *unary_operator = NULL;
 
       if ((unary_operator = malloc(sizeof(UnaryOperator))) == NULL) {
         fprintf(stderr, "ERREUR::PARSER::PARSE_EXPRESSION::ALLOCATION_3\n\nErreur d'allocation de l'opérateur binaire.\n");
+        free_expression(expression);
         return NULL;
       }
 
@@ -620,6 +650,10 @@ Expression * parse_expression(TokenStack * postfix_expression){
 
         expression->unary_operator = unary_operator;
         expression->type = UNARY_OPERATION;
+      } else {
+        free_unary_operator(unary_operator);
+        free_expression(expression);
+        return NULL;
       }
     }
   }
@@ -640,32 +674,41 @@ Statement * parse_statement(TokenStream * stream) {
   while (current_token(stream)->type != END && is_token_statement(current_token(stream))) {
 
     if (current_token(stream)->type == ASSIGN) {
+      Variable * variable = NULL;
 
-        if (stream->current < 1) {
-          print_error("ERREUR DE SYNTAXE", "L'assignation n'a pas de valeur.", current_token(stream));
-          return NULL;
-        }
+      if (stream->current < 1) {
+        print_error("ERREUR DE SYNTAXE", "L'assignation n'a pas de valeur.", current_token(stream));
+        free_statement(statement);
+        return NULL;
+      }
 
-        if (get_token(stream, -1)->type != NAME) {
-          print_error("ERREUR DE SYNTAXE", "Il est possible d'assigner des valeurs uniquement à des variables.", get_token(stream, -1));
-          return NULL;
-        }
+      if (get_token(stream, -1)->type != NAME) {
+        print_error("ERREUR DE SYNTAXE", "Il est possible d'assigner des valeurs uniquement à des variables.",
+                    get_token(stream, -1));
+        free_statement(statement);
+        return NULL;
+      }
 
+      if ((variable = malloc(sizeof(Variable))) == NULL || (variable->name = malloc(sizeof(char) * (strlen(get_token(stream, -1)->value) + 1))) == NULL) {
+        fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_2\n\nErreur d'allocation de la variable.\n");
+        free_statement(statement);
+        return NULL;
+      }
+
+      strcpy(variable->name, get_token(stream, -1)->value);
       next_token(stream);
 
       TokenStack * token_stack = infix_to_postfix(stream);
       if (token_stack == NULL) {
-        // Gérer l'erreur
-        free(statement);
+        free_statement(statement);
         return NULL;
       }
 
       Expression * value = parse_expression(token_stack);
 
       if (value == NULL) {
-        // Gérer l'erreur
         free_token_stack(token_stack);
-        free(statement);
+        free_statement(statement);
         return NULL;
       }
 
@@ -677,18 +720,19 @@ Statement * parse_statement(TokenStream * stream) {
           print_error("ERREUR DE SYNTAXE", "L'assignation n'a pas de valeur.", token_to_print);
         }
         free_token_stack(token_stack);
-        free(statement);
+        free_statement(statement);
         return NULL;
       }
 
       if ((statement->assignment = malloc(sizeof(Assignment))) == NULL) {
-        fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_2\n\nErreur d'allocation de l'assignation.\n");
+        fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_3\n\nErreur d'allocation de l'assignation.\n");
         free_token_stack(token_stack);
-        free(statement);
+        free_statement(statement);
         return NULL;
       }
 
       statement->assignment->value = value;
+      statement->assignment->variable = variable;
       statement->type = ASSIGNMENT;
       break;
 
@@ -699,8 +743,7 @@ Statement * parse_statement(TokenStream * stream) {
 
       TokenStack * token_stack = infix_to_postfix(stream);
       if (token_stack == NULL) {
-        // Gérer l'erreur
-        free(statement);
+        free_statement(statement);
         return NULL;
       }
 
@@ -709,14 +752,16 @@ Statement * parse_statement(TokenStream * stream) {
       if (condition->type == EMPTY_EXPRESSION) {
         print_error("ERREUR DE SYNTAXE", "Une instruction if nécessite une condition.", current_token(stream));
         free_token_stack(token_stack);
-        free(statement);
+        free_expression(condition);
+        free_statement(statement);
         return NULL;
       }
 
       if (current_token(stream)->type != LBRACE) {
         print_error("ERREUR DE SYNTAXE", "Caractère inattendue trouvé, accolade ouverte attendue.", current_token(stream));
         free_token_stack(token_stack);
-        free(statement);
+        free_expression(condition);
+        free_statement(statement);
         return NULL;
       }
 
@@ -726,12 +771,15 @@ Statement * parse_statement(TokenStream * stream) {
 
       if (true_branch == NULL) {
         free_token_stack(token_stack);
-        free(statement);
+        free_statement(statement);
         return NULL;
       }
 
       if ((statement->conditional_branch = malloc(sizeof(ConditionalBranch))) == NULL) {
-        fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_3\n\nErreur d'allocation de la branche conditionnelle.\n");
+        fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_4\n\nErreur d'allocation de la branche conditionnelle.\n");
+        free_program(true_branch);
+        free_token_stack(token_stack);
+        free_statement(statement);
         return NULL;
       }
 
@@ -743,13 +791,14 @@ Statement * parse_statement(TokenStream * stream) {
         next_token(stream);
         if (current_token(stream)->type == LBRACE || current_token(stream)->type == IF) {
           if ((statement->conditional_branch->false_branch = parse(stream)) == NULL) {
-            // free program
+            free_program(true_branch);
             free_token_stack(token_stack);
             free(statement);
             return NULL;
           }
         } else {
           print_error("ERREUR DE SYNTAXE", "Caractères inattendus après la branche else.", current_token(stream));
+          free_program(true_branch);
           free_token_stack(token_stack);
           free(statement);
           return NULL;
@@ -763,28 +812,34 @@ Statement * parse_statement(TokenStream * stream) {
       next_token(stream);
 
       if ((statement->for_loop = malloc(sizeof(ForLoop))) == NULL) {
-        fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_4\n\nErreur d'allocation de la boucle définie.\n");
+        fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_5\n\nErreur d'allocation de la boucle définie.\n");
+        free_statement(statement);
         return NULL;
       }
+
+      statement->for_loop->program = NULL;
+      statement->for_loop->condition = NULL;
+      statement->for_loop->modifier = NULL;
 
       statement->for_loop->initial_statement = parse_statement(stream);
 
       if (statement->for_loop->initial_statement == NULL) {
-        free(statement);
+        free_for_loop(statement->for_loop);
+        free_statement(statement);
         return NULL;
       }
 
       if (statement->for_loop->initial_statement->type != EMPTY_STATEMENT && current_token(stream)->type != COMMA) {
         print_error("ERREUR DE SYNTAXE", "L'initialisation d'une boucle for doit être suivie d'une virgule." , current_token(stream));
-        free(statement->for_loop);
-        free(statement);
+        free_for_loop(statement->for_loop);
+        free_statement(statement);
         return NULL;
       }
 
       if (statement->for_loop->initial_statement->type == EMPTY_STATEMENT && current_token(stream)->type == COMMA) {
         print_error("ERREUR DE SYNTAXE", "Une virgule est présente; Or aucune initialisation n'a été déclarée pour la boucle for.\nRetirer la virgule pour ne plus rencontrer cette erreur." , current_token(stream));
-        free(statement->for_loop);
-        free(statement);
+        free_for_loop(statement->for_loop);
+        free_statement(statement);
         return NULL;
       }
 
@@ -795,8 +850,8 @@ Statement * parse_statement(TokenStream * stream) {
       TokenStack * token_stack = infix_to_postfix(stream);
 
       if (token_stack == NULL) {
-        free(statement->for_loop);
-        free(statement);
+        free_for_loop(statement->for_loop);
+        free_statement(statement);
         return NULL;
       }
 
@@ -804,23 +859,23 @@ Statement * parse_statement(TokenStream * stream) {
 
       if (statement->for_loop->condition == NULL) {
         free_token_stack(token_stack);
-        free(statement->for_loop);
-        free(statement);
+        free_for_loop(statement->for_loop);
+        free_statement(statement);
         return NULL;
       }
 
       if (statement->for_loop->condition->type == EMPTY_EXPRESSION) {
         print_error("ERREUR DE SYNTAXE", "L'expression attendue pour la boucle for est vide.", current_token(stream));
         free_token_stack(token_stack);
-        free(statement->for_loop);
-        free(statement);
+        free_for_loop(statement->for_loop);
+        free_statement(statement);
         return NULL;
       }
 
       if (current_token(stream)->type != COMMA) {
         print_error("ERREUR DE SYNTAXE", "Une virgule attendue pour séparer la condition du modificateur de la boucle for n'est pas présente.", current_token(stream));
-        free(statement->for_loop);
-        free(statement);
+        free_for_loop(statement->for_loop);
+        free_statement(statement);
         return NULL;
       }
 
@@ -830,16 +885,16 @@ Statement * parse_statement(TokenStream * stream) {
 
       if (statement->for_loop->modifier == NULL) {
         free_token_stack(token_stack);
-        free(statement->for_loop);
-        free(statement);
+        free_for_loop(statement->for_loop);
+        free_statement(statement);
         return NULL;
       }
 
       if (statement->for_loop->modifier->type == EMPTY_STATEMENT || statement->for_loop->modifier->type == PROGRAM) {
         print_error("ERREUR DE SYNTAXE", "Une instruction de modification est attendue pour la boucle for.", current_token(stream));
         free_token_stack(token_stack);
-        free(statement->for_loop);
-        free(statement);
+        free_for_loop(statement->for_loop);
+        free_statement(statement);
         return NULL;
       }
 
@@ -849,8 +904,8 @@ Statement * parse_statement(TokenStream * stream) {
 
       if (for_body == NULL) {
         free_token_stack(token_stack);
-        free(statement->for_loop);
-        free(statement);
+        free_for_loop(statement->for_loop);
+        free_statement(statement);
         return NULL;
       }
 
@@ -864,15 +919,18 @@ Statement * parse_statement(TokenStream * stream) {
       next_token(stream);
 
       if ((statement->while_loop = malloc(sizeof(WhileLoop))) == NULL) {
-        fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_5\n\nErreur d'allocation de la boucle indefinie.\n");
+        fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_6\n\nErreur d'allocation de la boucle indefinie.\n");
+        free_statement(statement);
         return NULL;
       }
+
+      statement->while_loop->program = NULL;
 
       TokenStack * token_stack = infix_to_postfix(stream);
 
       if (token_stack == NULL) {
-        free(statement->while_loop);
-        free(statement);
+        free_while_loop(statement->while_loop);
+        free_statement(statement);
         return NULL;
       }
 
@@ -880,24 +938,24 @@ Statement * parse_statement(TokenStream * stream) {
 
       if (statement->while_loop->condition == NULL) {
         free_token_stack(token_stack);
-        free(statement->while_loop);
-        free(statement);
+        free_while_loop(statement->while_loop);
+        free_statement(statement);
         return NULL;
       }
 
       if (statement->while_loop->condition->type == EMPTY_EXPRESSION) {
         print_error("ERREUR DE SYNTAXE", "Une condition est attendue pour la boucle while, mais il n'y en a pas.", current_token(stream));
         free_token_stack(token_stack);
-        free(statement->while_loop);
-        free(statement);
+        free_while_loop(statement->while_loop);
+        free_statement(statement);
         return NULL;
       }
 
       if (current_token(stream)->type != LBRACE) {
         print_error("ERREUR DE SYNTAXE", "Une accolade ouvrant le corps de la boucle while est attendue.", current_token(stream));
         free_token_stack(token_stack);
-        free(statement->while_loop);
-        free(statement);
+        free_while_loop(statement->while_loop);
+        free_statement(statement);
         return NULL;
       }
 
@@ -907,8 +965,8 @@ Statement * parse_statement(TokenStream * stream) {
 
       if (while_body == NULL) {
         free_token_stack(token_stack);
-        free(statement->while_loop);
-        free(statement);
+        free_while_loop(statement->while_loop);
+        free_statement(statement);
         return NULL;
       }
 
@@ -921,7 +979,8 @@ Statement * parse_statement(TokenStream * stream) {
     if (current_token(stream)->type == BREAK || current_token(stream)->type == CONTINUE) {
 
       if ((statement->loop_instruction = malloc(sizeof(LoopInstruction))) == NULL) {
-        fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_6\n\nErreur d'allocation de la boucle indefinie.\n");
+        fprintf(stderr, "ERREUR::PARSER::PARSE_STATEMENT::ALLOCATION_7\n\nErreur d'allocation de la boucle indefinie.\n");
+        free_statement(statement);
         return NULL;
       }
 
@@ -954,8 +1013,7 @@ Program * parse(TokenStream * stream){
 
       if (instruction == NULL) {
         fprintf(stderr, "ERREUR::PARSER::ALLOCATION_2\n\nL'allocation mémoire de l'instruction a échouée.\n");
-        free(program->instructions);
-        free(program);
+        free_program(program);
         return NULL;
       }
 
@@ -974,18 +1032,16 @@ Program * parse(TokenStream * stream){
         statement->program = parse(stream);
 
         if (statement->program == NULL) {
-          // free program
-          free(statement);
-          free(instruction);
+          free_program(program);
+          free_statement(statement);
+          free_instruction(instruction);
           return NULL;
         }
 
         if (current_token(stream)->type != RBRACE) {
           print_error("ERREUR DE SYNTAXE", "Une ou plusieurs accolades ouvrantes n'ont pas été fermées.", get_token(stream, -1));
-          // free program
-          // free statement program
-          free(statement);
-          free(instruction);
+          print_statement(statement);
+          free_instruction(instruction);
           return NULL;
         }
       } else {
@@ -1001,11 +1057,8 @@ Program * parse(TokenStream * stream){
 
       if (current_token(stream)->type != SEMICOLON && instruction->statement->type == LOOP_INSTRUCTION) {
         print_error("ERREUR DE SYNTAXE", "Un point virgule doit obligatoirement suivre cette instruction.", current_token(stream));
-        // free program
-        // free statement program
-        free(instruction);
-        free(program->instructions);
-        free(program);
+        free_program(program);
+        free_instruction(instruction);
         return NULL;
       }
 
@@ -1050,7 +1103,7 @@ Program * parse(TokenStream * stream){
 
   if (current_token(stream)->type == RBRACE && !in_brace) {
     print_error("ERREUR DE SYNTAXE", "Une ou plusieurs accolades fermantes ne correspondent à aucun bloc de code.", current_token(stream));
-    // free program
+    free_program(program);
     return NULL;
   }
 

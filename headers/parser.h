@@ -161,7 +161,7 @@ struct Value{
 };
 
 struct Variable{
-  Value * value;
+  Type type;
   char * name;
 };
 
@@ -244,6 +244,7 @@ struct TokenStack{
 struct VariableDictionnary {
   unsigned int current;
   unsigned int capacity;
+  Value ** values;
   Variable ** variables;
 };
 
