@@ -101,6 +101,8 @@ void print_tree(Expression * root){
     }
   } else if (root->type == EMPTY_EXPRESSION){
     printf("EMPTY_EXPRESSION\n");
+  } else if (root->type == FUNCTION_CALL){
+    printf("FUNCTION_CALL\n");
   }
 
   tabs++;

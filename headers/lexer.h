@@ -9,6 +9,7 @@ typedef struct TokenStream TokenStream;
 
 enum TokenType {
   NAME,
+  FUNCTION,
   NUMBER,
   FLOATING_NUMBER,
   IF,

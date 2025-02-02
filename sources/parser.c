@@ -8,18 +8,18 @@
 #include "../headers/parser_test.h"
 #include "../headers/error.h"
 
-#define VALUE_MASK               0b000000000000000000001111111
-#define NUMBER_MASK              0b000000000000000000000000110
-#define STRING_MASK              0b000000000000000000000011000
-#define BOOLEAN_VALUE_MASK       0b000000000000000000001100000
-#define BOOLEAN_OPERATOR_MASK    0b000000000000000011110000000
-#define ARITHMETIC_OPERATOR_MASK 0b000000000111111100000000000
-#define COMPARISON_OPERATOR_MASK 0b001111111000000000000000000
-#define PARENTHESES_MASK         0b110000000000000000000000000
+#define VALUE_MASK               0b0000000000000000000011111111
+#define NUMBER_MASK              0b0000000000000000000000001100
+#define STRING_MASK              0b0000000000000000000000110000
+#define BOOLEAN_VALUE_MASK       0b0000000000000000000011000000
+#define BOOLEAN_OPERATOR_MASK    0b0000000000000000111100000000
+#define ARITHMETIC_OPERATOR_MASK 0b0000000001111111000000000000
+#define COMPARISON_OPERATOR_MASK 0b0011111110000000000000000000
+#define PARENTHESES_MASK         0b1100000000000000000000000000
 
-#define BINARY_OPERATOR_MASK     0b001111111111110001110000000
-#define UNARY_OPERATOR_MASK      0b000000000000001110000000000
-#define EQUALITY_OPERATOR_MASK   0b001100000000000000000000000
+#define BINARY_OPERATOR_MASK     0b0011111111111100011100000000
+#define UNARY_OPERATOR_MASK      0b0000000000000011100000000000
+#define EQUALITY_OPERATOR_MASK   0b0011000000000000000000000000
 
 void add_instruction(Program * program, Instruction * instruction) {
   if (program->current_instruction >= program->instruction_capacity) {
@@ -44,6 +44,7 @@ int is_token_expression(Token * token){
   // La fonction ne renvoie pas seulement si le token actuel peut être considéré comme une expression,
   // mais il renvoie aussi quel type d'après ce plan selon chaque bit (La position suit le petit boutisme):
   // bit n°1 = NAME                                   ] Ensemble des valeurs
+  // bit n°2 = FUNCTION                               ]
   // bit n°2 = NUMBER                                 ]
   // bit n°3 = FLOATING_NUMBER                        ]
   // bit n°4 = S_STRING       | Ensemble des strings  ]
@@ -73,31 +74,32 @@ int is_token_expression(Token * token){
   int mask = 0;
 
   mask =  (token->type == NAME)                  |
-          (token->type == NUMBER)          << 1  |
-          (token->type == FLOATING_NUMBER) << 2  |
-          (token->type == S_STRING)        << 3  |
-          (token->type == D_STRING)        << 4  |
-          (token->type == TRUE)            << 5  |
-          (token->type == FALSE)           << 6  |
-          (token->type == AND)             << 7  |
-          (token->type == OR)              << 8  |
-          (token->type == XOR)             << 9  |
-          (token->type == NOT)             << 10 |
-          (token->type == U_PLUS)          << 11 |
-          (token->type == U_MINUS)         << 12 |
-          (token->type == PLUS)            << 13 |
-          (token->type == MINUS)           << 14 |
-          (token->type == STAR)            << 15 |
-          (token->type == SLASH)           << 16 |
-          (token->type == PERCENT)         << 17 |
-          (token->type == LOWER)           << 18 |
-          (token->type == LOWER_EQUAL)     << 19 |
-          (token->type == GREATER)         << 20 |
-          (token->type == GREATER_EQUAL)   << 21 |
-          (token->type == UNEQUAL)         << 22 |
-          (token->type == EQUAL)           << 23 |
-          (token->type == LPAREN)          << 24 |
-          (token->type == RPAREN)          << 25;
+          (token->type == FUNCTION)        << 1  |
+          (token->type == NUMBER)          << 2  |
+          (token->type == FLOATING_NUMBER) << 3  |
+          (token->type == S_STRING)        << 4  |
+          (token->type == D_STRING)        << 5  |
+          (token->type == TRUE)            << 6  |
+          (token->type == FALSE)           << 7  |
+          (token->type == AND)             << 8  |
+          (token->type == OR)              << 9  |
+          (token->type == XOR)             << 10 |
+          (token->type == NOT)             << 11 |
+          (token->type == U_PLUS)          << 12 |
+          (token->type == U_MINUS)         << 13 |
+          (token->type == PLUS)            << 14 |
+          (token->type == MINUS)           << 15 |
+          (token->type == STAR)            << 16 |
+          (token->type == SLASH)           << 17 |
+          (token->type == PERCENT)         << 18 |
+          (token->type == LOWER)           << 19 |
+          (token->type == LOWER_EQUAL)     << 20 |
+          (token->type == GREATER)         << 21 |
+          (token->type == GREATER_EQUAL)   << 22 |
+          (token->type == UNEQUAL)         << 23 |
+          (token->type == EQUAL)           << 24 |
+          (token->type == LPAREN)          << 25 |
+          (token->type == RPAREN)          << 26;
 
   return mask;
 }
@@ -192,6 +194,54 @@ Token * top_token_stack(TokenStack * token_stack) {
   return token_stack->tokens[token_stack->current];
 }
 
+FunctionCall * new_function_call() {
+  FunctionCall * function = malloc(sizeof(FunctionCall));
+  if (function != NULL) {
+    function->parameters = malloc(sizeof(Expression*));
+    if (function->parameters != NULL) {
+      function->current_parameter = 0;
+      function->parameters_count = 1;
+
+      return function;
+    }
+  }
+
+  return NULL;
+}
+
+FunctionCall * parse_function_call(TokenStream * stream) {
+  FunctionCall * function_call = new_function_call();
+
+  next_token(stream);
+
+  if (function_call != NULL) {
+    function_call->name = current_token(stream)->value;
+    TokenStack * token_stack = infix_to_postfix(stream);
+    print_token(current_token(stream));
+
+    if (token_stack != NULL) {
+      Expression *arg = parse_expression(token_stack);
+
+      if (arg != NULL) {
+        add_argument(function_call, arg);
+      }
+
+    }
+  }
+
+  return NULL;
+}
+
+void add_argument(FunctionCall * function_call, Expression * expression) {
+  if (function_call->current_parameter >= function_call->parameters_count) {
+    function_call->parameters = realloc(function_call->parameters, (function_call->parameters_count *= 2) * sizeof(Expression *));
+  }
+
+  if (function_call->parameters != NULL) {
+    function_call->parameters[function_call->current_parameter++] = expression;
+  }
+}
+
 void push_token_stack(TokenStack * token_stack, Token * token) {
   if (token_stack->current >= token_stack->token_capacity) {
     token_stack->tokens = realloc(token_stack->tokens, (token_stack->token_capacity *= 2) * sizeof(Token *));
@@ -230,6 +280,19 @@ void free_variable(Variable * variable) {
 
   free(variable->name);
   free(variable);
+}
+
+void free_function(FunctionCall * function_call) {
+  if (function_call == NULL) {
+    return;
+  }
+
+  for (unsigned int i = 0; i < function_call->parameters_count; i++) {
+    free_expression(function_call->parameters[i]);
+  }
+
+  free(function_call->parameters);
+  free(function_call);
 }
 
 void free_binary_operator(BinaryOperator * binary_operator) {
@@ -1076,10 +1139,13 @@ Program * parse(TokenStream * stream){
         return NULL;
       }
 
+      if (current_token(stream)->type == FUNCTION) {
+        parse_function_call(stream);
+      }
+
       if ((stack = infix_to_postfix(stream)) == NULL) {
-        free(instruction);
-        free(program->instructions);
-        free(program);
+        free_program(program);
+        free_instruction(instruction);
         return NULL;
       }
 
@@ -1088,10 +1154,9 @@ Program * parse(TokenStream * stream){
       instruction->expression = parse_expression(stack);
 
       if (instruction->expression == NULL) {
-        free(stack);
-        free(instruction);
-        free(program->instructions);
-        free(program);
+        free_token_stack(stack);
+        free_instruction(instruction);
+        free_program(program);
         return NULL;
       }
 

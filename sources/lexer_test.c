@@ -133,6 +133,8 @@ void print_token(Token * token) {
       case END:
         printf("END\n");
         break;
+      case FUNCTION:
+        printf("FUNCTION\n");
       default:
         printf("UNKNOWN\n");
         break;

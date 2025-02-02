@@ -200,7 +200,12 @@ TokenStream * new_token_stream(char * str) {
         push_token(stream, (Token){EXCLAM, NULL, cursor1});
         continue;
       case '(':
-        push_token(stream, (Token){LPAREN, NULL, cursor1});
+        last = get_token(stream, -1);
+        if (last->type == NAME) {
+          last->type = FUNCTION;
+        } else {
+          push_token(stream, (Token){LPAREN, NULL, cursor1});
+        }
         continue;
       case ')':
         push_token(stream, (Token){RPAREN, NULL, cursor1});
