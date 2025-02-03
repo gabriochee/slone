@@ -8,7 +8,7 @@
 #include "../headers/parser_test.h"
 #include "../headers/error.h"
 
-#define VALUE_MASK               0b0000000000000000000011111111
+#define VALUE_MASK               0b0000000000000000000011111101
 #define NUMBER_MASK              0b0000000000000000000000001100
 #define STRING_MASK              0b0000000000000000000000110000
 #define BOOLEAN_VALUE_MASK       0b0000000000000000000011000000
@@ -212,20 +212,19 @@ FunctionCall * new_function_call() {
 FunctionCall * parse_function_call(TokenStream * stream) {
   FunctionCall * function_call = new_function_call();
 
-  next_token(stream);
-
   if (function_call != NULL) {
     function_call->name = current_token(stream)->value;
     TokenStack * token_stack = infix_to_postfix(stream);
     print_token(current_token(stream));
 
     if (token_stack != NULL) {
-      Expression *arg = parse_expression(token_stack);
+      Expression * arg = parse_expression(token_stack);
+      print_tree(arg);
+      printf("------------\n");
 
       if (arg != NULL) {
         add_argument(function_call, arg);
       }
-
     }
   }
 
@@ -490,13 +489,13 @@ TokenStack * infix_to_postfix(TokenStream * stream) {
   while ((mask = is_token_expression(token = current_token(stream)))) {
     if (mask & VALUE_MASK) {
       push_token_stack(output_stack, token);
-    } else if (token->type == LPAREN) {
+    } else if (token->type == LPAREN || token->type == FUNCTION) {
       push_token_stack(operator_stack, token);
     } else if (token->type == RPAREN) {
-      while (!operator_stack->is_empty && top_token_stack(operator_stack)->type != LPAREN) {
+      while (!operator_stack->is_empty && top_token_stack(operator_stack)->type != LPAREN && top_token_stack(operator_stack)->type != FUNCTION) {
         push_token_stack(output_stack, pop_token_stack(operator_stack));
       }
-      if (top_token_stack(operator_stack)->type != LPAREN || operator_stack->is_empty) {
+      if (operator_stack->is_empty || !(top_token_stack(operator_stack)->type == LPAREN || top_token_stack(operator_stack)->type == FUNCTION)) {
         print_error("ERREUR DE SYNTAXE", "Le nombre de parenthèses ouvertes et fermées ne correspond pas.", token);
         free_token_stack(operator_stack);
         free_token_stack(output_stack);
@@ -718,6 +717,9 @@ Expression * parse_expression(TokenStack * postfix_expression){
         free_expression(expression);
         return NULL;
       }
+    } else if (top_token->type == FUNCTION) {
+      pop_token_stack(postfix_expression);
+      return parse_expression(postfix_expression);
     }
   }
 
