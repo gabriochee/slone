@@ -110,6 +110,96 @@ int is_token_statement(Token * token) {
          token->type == LBRACE;
 }
 
+int is_expression_boolean(Expression * expression) {
+  if (expression->type == VALUE) {
+    return expression->value->type == BOOL;
+  }
+
+  if (expression->type == VARIABLE) {
+    return expression->variable->type == BOOL;
+  }
+
+  if (expression->type == BINARY_OPERATION) {
+    BinaryOperatorType bin_type = expression->binary_operator->type;
+
+    return bin_type == LOGIC_AND   ||
+    bin_type == LOGIC_OR           ||
+    bin_type == LOGIC_XOR          ||
+    bin_type == GREATER_THAN       ||
+    bin_type == GREATER_EQUAL_THAN ||
+    bin_type == LOWER_THAN         ||
+    bin_type == LOWER_EQUAL_THAN   ||
+    bin_type == EQUAL_TO           ||
+    bin_type == NOT_EQUAL_TO;
+  }
+
+  if (expression->type == UNARY_OPERATION) {
+    return expression->unary_operator->type == LOGIC_NOT;
+  }
+
+  return 0;
+}
+
+int is_expression_numeric(Expression * expression) {
+  if (expression->type == VALUE) {
+    Type val_type = expression->value->type;
+    return val_type == UNSIGNED_INTEGER || val_type == INTEGER || val_type == FLOAT;
+  }
+
+  if (expression->type == VARIABLE) {
+    Type var_type = expression->variable->type;
+    return var_type == UNSIGNED_INTEGER || var_type == INTEGER || var_type == FLOAT;
+  }
+
+  if (expression->type == BINARY_OPERATION) {
+    BinaryOperatorType bin_type = expression->binary_operator->type;
+
+    return bin_type == ADD ||
+    bin_type == SUB        ||
+    bin_type == MULT       ||
+    bin_type == DIV        ||
+    bin_type == MOD;
+  }
+
+  if (expression->type == UNARY_OPERATION) {
+    UnaryOperatorType un_type = expression->unary_operator->type;
+    return un_type == UNARY_PLUS || un_type == UNARY_MINUS;
+  }
+
+  return 0;
+}
+
+int is_unary_valid(UnaryOperator * unary_operator) {
+  if (unary_operator->type == LOGIC_NOT) {
+    return is_expression_numeric(unary_operator->expression);
+  }
+
+  return is_expression_numeric(unary_operator->expression);
+}
+int is_binary_valid(BinaryOperator * binary_operator) {
+  BinaryOperatorType bin_type = binary_operator->type;
+
+  if (bin_type == GREATER_THAN       ||
+      bin_type == GREATER_EQUAL_THAN ||
+      bin_type == LOWER_THAN         ||
+      bin_type == LOWER_EQUAL_THAN   ||
+      bin_type == ADD  ||
+      bin_type == SUB  ||
+      bin_type == MULT ||
+      bin_type == DIV  ||
+      bin_type == MOD) {
+    return is_expression_numeric(binary_operator->left_expression) &&  is_expression_numeric(binary_operator->right_expression);
+  }
+
+  if (bin_type == LOGIC_AND ||
+      bin_type == LOGIC_OR  ||
+      bin_type == LOGIC_XOR) {
+    return is_expression_boolean(binary_operator->left_expression) &&  is_expression_boolean(binary_operator->right_expression);
+  }
+
+  return 1;
+}
+
 short operator_precedence(Token * token) {
   short mask = 0;
   mask =  (token->type == LPAREN)                                                            |
@@ -466,6 +556,7 @@ TokenStack * infix_to_postfix(TokenStream * stream) {
 }
 
 Expression * parse_expression(TokenStack * postfix_expression){
+
   Token * top_token = NULL;
   Expression * expression = NULL;
 
@@ -481,6 +572,7 @@ Expression * parse_expression(TokenStack * postfix_expression){
     int token_mask = is_token_expression(top_token);
 
     if (token_mask & VALUE_MASK) {
+
       Value * value = NULL;
       expression->type = VALUE;
 
@@ -529,12 +621,19 @@ Expression * parse_expression(TokenStack * postfix_expression){
         } else {
           value->type = STRING;
           value->string_value = top_token->value;
+          if ((value->string_value = malloc(sizeof(char) * (strlen(top_token->value) + 1))) == NULL) {
+            fprintf(stderr, "ERREUR::PARSER::PARSE_EXPRESSION::ALLOCATION_3\n\nErreur d'allocation de la variable.\n");
+            free_expression(expression);
+            return NULL;
+          }
+
+          strcpy(value->string_value, top_token->value);
         }
       } else if (top_token->type == NAME) {
         Variable * variable = NULL;
 
         if ((variable = malloc(sizeof(Variable))) == NULL || (variable->name = malloc(sizeof(char) * (strlen(top_token->value) + 1))) == NULL) {
-          fprintf(stderr, "ERREUR::PARSER::PARSE_EXPRESSION::ALLOCATION_3\n\nErreur d'allocation de la variable.\n");
+          fprintf(stderr, "ERREUR::PARSER::PARSE_EXPRESSION::ALLOCATION_4\n\nErreur d'allocation de la variable.\n");
           free_expression(expression);
           return NULL;
         }
@@ -551,12 +650,10 @@ Expression * parse_expression(TokenStack * postfix_expression){
       expression->type = BINARY_OPERATION;
 
       if ((binary_operator = malloc(sizeof(BinaryOperator))) == NULL) {
-        fprintf(stderr, "ERREUR::PARSER::PARSE_EXPRESSION::ALLOCATION_3\n\nErreur d'allocation de l'opérateur binaire.\n");
+        fprintf(stderr, "ERREUR::PARSER::PARSE_EXPRESSION::ALLOCATION_5\n\nErreur d'allocation de l'opérateur binaire.\n");
         free_expression(expression);
         return NULL;
       }
-
-      expression->binary_operator = binary_operator;
 
       Expression * left_expression = NULL;
       Expression * right_expression = NULL;
@@ -568,46 +665,46 @@ Expression * parse_expression(TokenStack * postfix_expression){
         expression->type = BINARY_OPERATION;
         switch (top_token->type) {
           case AND:
-            expression->binary_operator->type = LOGIC_AND;
+            binary_operator->type = LOGIC_AND;
           break;
           case OR:
-            expression->binary_operator->type = LOGIC_OR;
+            binary_operator->type = LOGIC_OR;
           break;
           case XOR:
-            expression->binary_operator->type = LOGIC_XOR;
+            binary_operator->type = LOGIC_XOR;
           break;
           case EQUAL:
-            expression->binary_operator->type = EQUAL_TO;
+            binary_operator->type = EQUAL_TO;
           break;
           case UNEQUAL:
-            expression->binary_operator->type = NOT_EQUAL_TO;
+            binary_operator->type = NOT_EQUAL_TO;
           break;
           case GREATER:
-            expression->binary_operator->type = GREATER_THAN;
+            binary_operator->type = GREATER_THAN;
           break;
           case GREATER_EQUAL:
-            expression->binary_operator->type = GREATER_EQUAL_THAN;
+            binary_operator->type = GREATER_EQUAL_THAN;
           break;
           case LOWER:
-            expression->binary_operator->type = LOWER_THAN;
+            binary_operator->type = LOWER_THAN;
           break;
           case LOWER_EQUAL:
-            expression->binary_operator->type = LOWER_EQUAL_THAN;
+            binary_operator->type = LOWER_EQUAL_THAN;
           break;
           case PLUS:
-            expression->binary_operator->type = ADD;
+            binary_operator->type = ADD;
           break;
           case MINUS:
-            expression->binary_operator->type = SUB;
+            binary_operator->type = SUB;
           break;
           case STAR:
-            expression->binary_operator->type = MULT;
+            binary_operator->type = MULT;
           break;
           case SLASH:
-            expression->binary_operator->type = DIV;
+            binary_operator->type = DIV;
           break;
           case PERCENT:
-            expression->binary_operator->type = MOD;
+            binary_operator->type = MOD;
           break;
           default:
             break;
@@ -615,9 +712,16 @@ Expression * parse_expression(TokenStack * postfix_expression){
 
         binary_operator->left_expression = left_expression;
         binary_operator->right_expression = right_expression;
+        expression->binary_operator = binary_operator;
+
+        if (!is_binary_valid(binary_operator)){
+          print_error("ERREUR DE TYPE", "Le type de l'opérateur et des valeurs ne correspondent pas.", top_token);
+
+          free_expression(expression);
+
+          return NULL;
+        }
       } else {
-        free_expression(left_expression);
-        free_expression(right_expression);
         free_binary_operator(binary_operator);
         return NULL;
       }
@@ -625,7 +729,7 @@ Expression * parse_expression(TokenStack * postfix_expression){
       UnaryOperator *unary_operator = NULL;
 
       if ((unary_operator = malloc(sizeof(UnaryOperator))) == NULL) {
-        fprintf(stderr, "ERREUR::PARSER::PARSE_EXPRESSION::ALLOCATION_3\n\nErreur d'allocation de l'opérateur binaire.\n");
+        fprintf(stderr, "ERREUR::PARSER::PARSE_EXPRESSION::ALLOCATION_6\n\nErreur d'allocation de l'opérateur binaire.\n");
         free_expression(expression);
         return NULL;
       }
@@ -650,8 +754,16 @@ Expression * parse_expression(TokenStack * postfix_expression){
 
         expression->unary_operator = unary_operator;
         expression->type = UNARY_OPERATION;
+
+        if (!is_unary_valid(expression->unary_operator)) {
+          print_error("ERREUR DE TYPE", "Le type de l'opérateur et de la valeur ne correspondent pas.", top_token);
+
+          free_expression(expression);
+
+          return NULL;
+        }
+
       } else {
-        free_unary_operator(unary_operator);
         free_expression(expression);
         return NULL;
       }
@@ -1071,15 +1183,13 @@ Program * parse(TokenStream * stream){
 
       if (instruction == NULL) {
         fprintf(stderr, "ERREUR::PARSER::ALLOCATION_3\n\nL'allocation mémoire de l'instruction a échouée.\n");
-        free(program->instructions);
-        free(program);
+        free_program(program);
         return NULL;
       }
 
       if ((stack = infix_to_postfix(stream)) == NULL) {
-        free(instruction);
-        free(program->instructions);
-        free(program);
+        free_instruction(instruction);
+        free_program(program);
         return NULL;
       }
 

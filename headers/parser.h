@@ -278,6 +278,12 @@ int is_token_expression(Token * token);
 int is_token_statement(Token * token);
 short operator_precedence(Token * token);
 
+int is_expression_boolean(Expression * expression);
+int is_expression_numeric(Expression * expression);
+
+int is_unary_valid(UnaryOperator * unary_operator);
+int is_binary_valid(BinaryOperator * binary_operator);
+
 void free_value(Value * value);
 void free_variable(Variable * variable);
 void free_binary_operator(BinaryOperator * binary_operator);
