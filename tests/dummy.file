@@ -1,1 +1,3 @@
-print( 9*1, true, 234 );
+if (6 > "Salut !") and true {
+
+}

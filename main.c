@@ -47,7 +47,7 @@ int main(const int argc, const char * argv[]){
 
   Program * program = parse(stream);
 
-  free(program);
+  free_program(program);
 
   fclose(file);
   free_token_stream(stream);

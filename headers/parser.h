@@ -34,7 +34,7 @@
 //
 //      <unary_operator>  ::= not|-|+
 //
-//      <expression>      ::= <value> | <expression><binary_operator><expression> | <unary_operator><expression> | (<expression>) | function(expression, ...)
+//      <expression>      ::= <value> | <expression><binary_operator><expression> | <unary_operator><expression> | (<expression>)
 //
 //      <if>              ::= if <expression> {<program>}
 //
@@ -191,7 +191,6 @@ struct Expression{
     BinaryOperator * binary_operator;
     UnaryOperator * unary_operator;
     Variable * variable;
-    FunctionCall * function_call;
   };
 };
 
@@ -273,9 +272,6 @@ TokenStack * infix_to_postfix(TokenStream * stream);
 
 Variable * get_variable(VariableDictionnary * variable_dictionary, char * name);
 
-FunctionCall * new_function_call();
-FunctionCall * parse_function_call(TokenStream * stream);
-
 VariableDictionnary * new_variable_dictionary();
 
 void add_instruction(Program * program, Instruction * instruction);
@@ -287,15 +283,18 @@ void free_token_stack(TokenStack * token_stack);
 void free_variable_dictionnary(VariableDictionnary * variable_dictionnary);
 void add_to_variable_dictionnary(VariableDictionnary * dictionary, Variable * variable);
 
-void add_argument(FunctionCall * function_call, Expression * expression);
-
 int is_token_expression(Token * token);
 int is_token_statement(Token * token);
 short operator_precedence(Token * token);
 
+int is_expression_boolean(Expression * expression);
+int is_expression_numeric(Expression * expression);
+
+int is_unary_valid(UnaryOperator * unary_operator);
+int is_binary_valid(BinaryOperator * binary_operator);
+
 void free_value(Value * value);
 void free_variable(Variable * variable);
-void free_function(FunctionCall * function_call);
 void free_binary_operator(BinaryOperator * binary_operator);
 void free_unary_operator(UnaryOperator * unary_operator);
 void free_expression(Expression * expression);
