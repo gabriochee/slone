@@ -95,12 +95,12 @@ enum Type{
   BOOL,
   CHAR,
   STRING,
+  EMPTY,
 };
 
 enum ExpressionType{
   VALUE,
   VARIABLE,
-  FUNCTION_CALL,
   EXPR,
   BINARY_OPERATION,
   UNARY_OPERATION,
