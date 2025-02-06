@@ -241,6 +241,7 @@ struct Program{
   unsigned int current_instruction;
   VariableDictionnary * variable_dictionary;
   Instruction ** instructions;
+  Program * parent;
 };
 
 struct TokenStack{
@@ -258,19 +259,17 @@ struct VariableDictionnary {
 };
 
 Program * new_program();
-Program * parse(TokenStream * stream);
+Program * parse(TokenStream * stream, Program * parent);
 
 Expression * parse_expression(TokenStack * postfix_expression);
 
-Statement * parse_statement(TokenStream * stream);
+Statement * parse_statement(TokenStream * stream, Program * parent);
 
 Token * pop_token_stack(TokenStack * token_stack);
 Token * top_token_stack(TokenStack * token_stack);
 
 TokenStack * new_token_stack();
 TokenStack * infix_to_postfix(TokenStream * stream);
-
-Variable * get_variable(VariableDictionnary * variable_dictionary, char * name);
 
 VariableDictionnary * new_variable_dictionary();
 
@@ -281,7 +280,6 @@ void push_token_stack(TokenStack * token_stack, Token * token);
 void free_token_stack(TokenStack * token_stack);
 
 void free_variable_dictionnary(VariableDictionnary * variable_dictionnary);
-void add_to_variable_dictionnary(VariableDictionnary * dictionary, Variable * variable);
 
 int is_token_expression(Token * token);
 int is_token_statement(Token * token);

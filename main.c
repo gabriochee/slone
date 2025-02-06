@@ -8,6 +8,7 @@
 #include "headers/parser.h"
 #include "headers/parser_test.h"
 #include "headers/error.h"
+#include "headers/interpreter.h"
 
 int main(const int argc, const char * argv[]){
 
@@ -45,7 +46,15 @@ int main(const int argc, const char * argv[]){
 
   TokenStream * stream = new_token_stream(file_content);
 
-  Program * program = parse(stream);
+  Program * program = parse(stream, NULL);
+
+  interpret(program, NULL);
+
+//Expression expr;
+//expr.type = VALUE;
+//expr.value = program->variable_dictionary->values[0];
+
+  //print_tree(&expr);
 
   free_program(program);
 

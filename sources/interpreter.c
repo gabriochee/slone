@@ -8,7 +8,7 @@
 void interpret(Program * program, Program * parent){
   for (unsigned int current = 0; current < program->current_instruction; current++){
     if (program->instructions[current]->type == EXPRESSION){
-      interpret_expression(program->instructions[current]->expression, program->variable_dictionary);
+      interpret_expression(program->instructions[current]->expression, program);
     } else {
       StatementType type = program->instructions[current]->statement->type;
       switch (type){
@@ -34,17 +34,17 @@ void interpret(Program * program, Program * parent){
 }
 
 void interpret_assignment(Assignment * assignment, Program * program) {
-  if (get_variable(assignment->variable, program->variable_dictionary) == NULL) {
+  if (get_variable(assignment->variable, program) == NULL) {
     add_to_variable_dictionnary(program->variable_dictionary, assignment->variable);
     Value *val = malloc(sizeof(Value));
-    *val = interpret_expression(assignment->value, program->variable_dictionary);
+    *val = interpret_expression(assignment->value, program);
     assignment->variable->type = val->type;
     program->variable_dictionary->values[program->variable_dictionary->current - 1] = val;
   } else {
     for (unsigned int i = 0; i < program->variable_dictionary->current; i++) {
       if (strcmp(program->variable_dictionary->variables[i]->name, assignment->variable->name) == 0) {
         Value *val = malloc(sizeof(Value));
-        *val = interpret_expression(assignment->value, program->variable_dictionary);
+        *val = interpret_expression(assignment->value, program);
         assignment->variable->type = val->type;
         program->variable_dictionary->values[i] = val;
       }
@@ -66,17 +66,23 @@ void add_to_variable_dictionnary(VariableDictionnary * dictionnary, Variable * v
   }
 }
 
-Value * get_variable(Variable * variable, VariableDictionnary * dictionnary) {
+Value * get_variable(Variable * variable, Program * program) {
+  VariableDictionnary * dictionnary = program->variable_dictionary;
+
   for (unsigned int i = 0; i < dictionnary->current; i++) {
     if (strcmp(variable->name, dictionnary->variables[i]->name) == 0) {
       return dictionnary->values[i];
     }
   }
 
+  if (program->parent != NULL){
+    return get_variable(variable, program);
+  }
+
   return NULL;
 }
 
-Value interpret_expression(Expression * expression, VariableDictionnary * variable_dictionnary){
+Value interpret_expression(Expression * expression, Program * program){
   Value result;
   result.type = EMPTY;
 
@@ -85,12 +91,12 @@ Value interpret_expression(Expression * expression, VariableDictionnary * variab
   }
 
   if (expression->type == VARIABLE){
-    if (get_variable(expression->variable, variable_dictionnary) == NULL){
+    if (get_variable(expression->variable, program) == NULL){
       fprintf(stderr, "Variable '%s' introuvable.\n", expression->variable->name);
       return result;
     }
 
-    return *get_variable(expression->variable, variable_dictionnary);
+    return *get_variable(expression->variable, program);
   }
 
   if (expression->type == UNARY_OPERATION){
@@ -110,7 +116,7 @@ Value interpret_expression(Expression * expression, VariableDictionnary * variab
     }
 
     if (expression->unary_operator->expression->type != VALUE){
-      temp = interpret_expression(expression->unary_operator->expression, variable_dictionnary);
+      temp = interpret_expression(expression->unary_operator->expression, program);
     } else {
       temp = *expression->unary_operator->expression->value;
     }
@@ -168,13 +174,13 @@ Value interpret_expression(Expression * expression, VariableDictionnary * variab
     }
 
     if (expression->binary_operator->left_expression != VALUE){
-      temp_left = interpret_expression(expression->binary_operator->left_expression, variable_dictionnary);
+      temp_left = interpret_expression(expression->binary_operator->left_expression, program);
     } else {
       temp_left = *expression->binary_operator->left_expression->value;
     }
 
     if (expression->binary_operator->right_expression != VALUE){
-      temp_right = interpret_expression(expression->binary_operator->right_expression, variable_dictionnary);
+      temp_right = interpret_expression(expression->binary_operator->right_expression, program);
     } else {
       temp_right = *expression->binary_operator->right_expression->value;
     }

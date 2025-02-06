@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include "../headers/lexer.h"
 #include "../headers/lexer_test.h"
@@ -775,7 +776,7 @@ Expression * parse_expression(TokenStack * postfix_expression){
   return expression;
 }
 
-Statement * parse_statement(TokenStream * stream) {
+Statement * parse_statement(TokenStream * stream, Program * parent) {
   Statement * statement = NULL;
 
   if ((statement = malloc(sizeof(Statement))) == NULL) {
@@ -881,7 +882,7 @@ Statement * parse_statement(TokenStream * stream) {
 
       next_token(stream);
 
-      Program * true_branch = parse(stream);
+      Program * true_branch = parse(stream, parent);
 
       if (true_branch == NULL) {
         free_token_stack(token_stack);
@@ -904,7 +905,7 @@ Statement * parse_statement(TokenStream * stream) {
       if (next_token(stream)->type == ELSE) {
         next_token(stream);
         if (current_token(stream)->type == LBRACE || current_token(stream)->type == IF) {
-          if ((statement->conditional_branch->false_branch = parse(stream)) == NULL) {
+          if ((statement->conditional_branch->false_branch = parse(stream, parent)) == NULL) {
             free_program(true_branch);
             free_token_stack(token_stack);
             free(statement);
@@ -935,7 +936,7 @@ Statement * parse_statement(TokenStream * stream) {
       statement->for_loop->condition = NULL;
       statement->for_loop->modifier = NULL;
 
-      statement->for_loop->initial_statement = parse_statement(stream);
+      statement->for_loop->initial_statement = parse_statement(stream, parent);
 
       if (statement->for_loop->initial_statement == NULL) {
         free_for_loop(statement->for_loop);
@@ -995,7 +996,7 @@ Statement * parse_statement(TokenStream * stream) {
 
       next_token(stream);
 
-      statement->for_loop->modifier = parse_statement(stream);
+      statement->for_loop->modifier = parse_statement(stream, parent);
 
       if (statement->for_loop->modifier == NULL) {
         free_token_stack(token_stack);
@@ -1014,7 +1015,7 @@ Statement * parse_statement(TokenStream * stream) {
 
       next_token(stream);
 
-      Program * for_body = parse(stream);
+      Program * for_body = parse(stream, parent);
 
       if (for_body == NULL) {
         free_token_stack(token_stack);
@@ -1075,7 +1076,7 @@ Statement * parse_statement(TokenStream * stream) {
 
       next_token(stream);
 
-      Program * while_body = parse(stream);
+      Program * while_body = parse(stream, parent);
 
       if (while_body == NULL) {
         free_token_stack(token_stack);
@@ -1109,7 +1110,7 @@ Statement * parse_statement(TokenStream * stream) {
   return statement;
 }
 
-Program * parse(TokenStream * stream){
+Program * parse(TokenStream * stream, Program * parent){
   Program * program = NULL;
 
   if ((program = new_program()) == NULL) {
@@ -1143,7 +1144,7 @@ Program * parse(TokenStream * stream){
 
         next_token(stream);
         instruction->statement = statement;
-        statement->program = parse(stream);
+        statement->program = parse(stream, parent);
 
         if (statement->program == NULL) {
           free_program(program);
@@ -1159,7 +1160,7 @@ Program * parse(TokenStream * stream){
           return NULL;
         }
       } else {
-        instruction->statement = parse_statement(stream);
+        instruction->statement = parse_statement(stream, parent);
       }
 
       if (instruction->statement == NULL) {
@@ -1218,6 +1219,8 @@ Program * parse(TokenStream * stream){
     free_program(program);
     return NULL;
   }
+
+  program->parent = parent;
 
   return program;
 }

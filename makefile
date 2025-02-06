@@ -3,37 +3,36 @@
 # --------------------------
 
 CC		= gcc
-CFLAGS  = -Wall -Werror -g -lm
+CFLAGS  = -Wall -Werror -g 
+LIBS	= -lm
 
 # --------------------------
 #  	  COMPILATION
 # --------------------------
 
-# Il faut alléger ce Makefile mon vier ! TODO : utiliser les paramètres des commandes make
-
 all: main.o lexer.o lexer_test.o parser.o parser_test.o error.o interpreter.o
-	$(CC) $(CFLAGS) main.o lexer.o lexer_test.o parser.o parser_test.o error.o interpreter.o -o interpreter
+	$(CC) $(CFLAGS) main.o lexer.o lexer_test.o parser.o parser_test.o error.o interpreter.o -o interpreter $(LIBS)
 
 main.o: main.c
-	$(CC) $(CFLAGS) -c main.c -o main.o
+	$(CC) $(CFLAGS) -c main.c -o main.o $(LIBS)
 
 lexer.o: sources/lexer.c
-	$(CC) $(CFLAGS) -c sources/lexer.c -o lexer.o
+	$(CC) $(CFLAGS) -c sources/lexer.c -o lexer.o $(LIBS)
 
 lexer_test.o: sources/lexer_test.c
-	$(CC) $(CFLAGS) -c sources/lexer_test.c -o lexer_test.o
+	$(CC) $(CFLAGS) -c sources/lexer_test.c -o lexer_test.o $(LIBS)
 
 parser.o: sources/parser.c
-	$(CC) $(CFLAGS) -c sources/parser.c -o parser.o
+	$(CC) $(CFLAGS) -c sources/parser.c -o parser.o $(LIBS)
 
 parser_test.o: sources/parser_test.c
-	$(CC) $(CFLAGS) -c sources/parser_test.c -o parser_test.o
+	$(CC) $(CFLAGS) -c sources/parser_test.c -o parser_test.o $(LIBS)
 
 error.o: sources/error.c
-	$(CC) $(CFLAGS) -c sources/error.c -o error.o
+	$(CC) $(CFLAGS) -c sources/error.c -o error.o $(LIBS)
 
 interpreter.o: sources/interpreter.c
-	$(CC) $(CFLAGS) -c sources/interpreter.c -o interpreter.o
+	$(CC) $(CFLAGS) -c sources/interpreter.c -o interpreter.o $(LIBS)
 
 clean:
 	rm *.o
