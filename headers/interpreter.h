@@ -3,16 +3,26 @@
 
 #include "parser.h"
 
-void intepret(Program * program, Program * parent);
+void interpret(Program * program, Program * parent);
 
-void interpret_assignment(Assignment * assignment);
-void interpret_if(ConditionalBranch * conditional_branch);
-void interpret_while(WhileLoop * while_loop);
-void interpret_for(ForLoop * for_loop);
+void interpret_assignment(Assignment * assignment, Program * program);
+void interpret_if(ConditionalBranch * conditional_branch, Program * program);
+void interpret_while(WhileLoop * while_loop, Program * program);
+void interpret_for(ForLoop * for_loop, Program * program);
 
-Value interpret_expression(Expression * expression);
+void free_variable_dictionnary(VariableDictionnary * variable_dictionnary);
+void add_to_variable_dictionnary(VariableDictionnary * dictionnary, Variable * variable);
+void assign_variable(Variable * variable, Value * value);
+
+Value * get_variable(Variable * variable, VariableDictionnary * dictionnary);
+
+Value interpret_expression(Expression * expression, VariableDictionnary * dictionnary);
 
 Value * cast(Value * value, Type type);
+
+Value u_minus(Value * val);
+Value u_plus(Value * val);
+Value u_not(Value * val);
 
 Value l_and(Value * left, Value * right);
 Value l_or(Value * left, Value * right);

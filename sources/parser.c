@@ -318,7 +318,9 @@ void free_variable(Variable * variable) {
     return;
   }
 
-  free(variable->name);
+  if (variable->type == STRING) {
+    free(variable->name);
+  }
   free(variable);
 }
 
@@ -374,8 +376,8 @@ void free_assignment(Assignment * assignment) {
     return;
   }
 
-  free_variable(assignment->variable);
-  free_expression(assignment->value);
+  //free_variable(assignment->variable);
+  //free_expression(assignment->value);
   free(assignment);
 }
 

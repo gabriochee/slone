@@ -3,7 +3,7 @@
 # --------------------------
 
 CC		= gcc
-CFLAGS  = -Wall -Werror -g
+CFLAGS  = -Wall -Werror -g -lm
 
 # --------------------------
 #  	  COMPILATION
@@ -11,8 +11,8 @@ CFLAGS  = -Wall -Werror -g
 
 # Il faut alléger ce Makefile mon vier ! TODO : utiliser les paramètres des commandes make
 
-all: main.o lexer.o lexer_test.o parser.o parser_test.o error.o
-	$(CC) $(CFLAGS) main.o lexer.o lexer_test.o parser.o parser_test.o error.o -o interpreter
+all: main.o lexer.o lexer_test.o parser.o parser_test.o error.o interpreter.o
+	$(CC) $(CFLAGS) main.o lexer.o lexer_test.o parser.o parser_test.o error.o interpreter.o -o interpreter
 
 main.o: main.c
 	$(CC) $(CFLAGS) -c main.c -o main.o
@@ -31,6 +31,9 @@ parser_test.o: sources/parser_test.c
 
 error.o: sources/error.c
 	$(CC) $(CFLAGS) -c sources/error.c -o error.o
+
+interpreter.o: sources/interpreter.c
+	$(CC) $(CFLAGS) -c sources/interpreter.c -o interpreter.o
 
 clean:
 	rm *.o

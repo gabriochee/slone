@@ -8,7 +8,7 @@
 void interpret(Program * program, Program * parent){
   for (unsigned int current = 0; current < program->current_instruction; current++){
     if (program->instructions[current]->type == EXPRESSION){
-      interpret_expression(program->instructions[current]->expression);
+      interpret_expression(program->instructions[current]->expression, program->variable_dictionary);
     } else {
       StatementType type = program->instructions[current]->statement->type;
       switch (type){
@@ -16,27 +16,174 @@ void interpret(Program * program, Program * parent){
           interpret_assignment(program->instructions[current]->statement->assignment, program);
           break;
         case CONDITIONAL_BRANCH:
-          interpret_if(program->instructions[current]->statement->conditional_branch, program);
+          //interpret_if(program->instructions[current]->statement->conditional_branch, program);
           break;
         case WHILE_LOOP:
-          interpret_while(program->instructions[current]->statement->while_loop, program);
+          //interpret_while(program->instructions[current]->statement->while_loop, program);
           break;
         case FOR_LOOP:
-          interpret_for(program->instructions[current]->statement->for_loop, program);
+          //interpret_for(program->instructions[current]->statement->for_loop, program);
           break;
         case PROGRAM:
-          interpret(program->instructions[current]->statement->program, program);
+          //interpret(program->instructions[current]->statement->program, program);
+        default:
+          break;
       }
     }
   }
 }
 
-void interpret_assignment(Assignment * assignment, Program * parent);
-void interpret_if(ConditionalBranch * conditional_branch, Program * parent);
-void interpret_while(WhileLoop * while_loop, Program * parent);
-void interpret_for(ForLoop * for_loop, Program * parent);
+void interpret_assignment(Assignment * assignment, Program * program) {
+  if (get_variable(assignment->variable, program->variable_dictionary) == NULL) {
+    add_to_variable_dictionnary(program->variable_dictionary, assignment->variable);
+    Value *val = malloc(sizeof(Value));
+    *val = interpret_expression(assignment->value, program->variable_dictionary);
+    assignment->variable->type = val->type;
+    program->variable_dictionary->values[program->variable_dictionary->current - 1] = val;
+  } else {
+    for (unsigned int i = 0; i < program->variable_dictionary->current; i++) {
+      if (strcmp(program->variable_dictionary->variables[i]->name, assignment->variable->name) == 0) {
+        Value *val = malloc(sizeof(Value));
+        *val = interpret_expression(assignment->value, program->variable_dictionary);
+        assignment->variable->type = val->type;
+        program->variable_dictionary->values[i] = val;
+      }
+    }
+  }
+}
+//void interpret_if(ConditionalBranch * conditional_branch, Program * program);
+//void interpret_while(WhileLoop * while_loop, Program * program);
+//void interpret_for(ForLoop * for_loop, Program * program);
 
-Value interpret_expression(Expression * expression);
+void add_to_variable_dictionnary(VariableDictionnary * dictionnary, Variable * variable) {
+  if (dictionnary->current >= dictionnary->capacity) {
+    dictionnary->variables = realloc(dictionnary->variables, (dictionnary->capacity *= 2) * sizeof(Variable *));
+    dictionnary->values = realloc(dictionnary->values, (dictionnary->capacity) * sizeof(Value *));
+  }
+
+  if (dictionnary->variables != NULL && dictionnary->values != NULL) {
+    dictionnary->variables[dictionnary->current++] = variable;
+  }
+}
+
+Value * get_variable(Variable * variable, VariableDictionnary * dictionnary) {
+  for (unsigned int i = 0; i < dictionnary->current; i++) {
+    if (strcmp(variable->name, dictionnary->variables[i]->name) == 0) {
+      return dictionnary->values[i];
+    }
+  }
+
+  return NULL;
+}
+
+Value interpret_expression(Expression * expression, VariableDictionnary * variable_dictionnary){
+  Value result;
+  result.type = EMPTY;
+
+  if (expression->type == VALUE){
+    return *expression->value;
+  }
+
+  if (expression->type == VARIABLE){
+    if (get_variable(expression->variable, variable_dictionnary) == NULL){
+      fprintf(stderr, "Variable '%s' introuvable.\n", expression->variable->name);
+      return result;
+    }
+
+    return *get_variable(expression->variable, variable_dictionnary);
+  }
+
+  if (expression->type == UNARY_OPERATION){
+  	Value temp;
+    Value (* unary_operator)(Value *);
+
+    switch (expression->unary_operator->type){
+      case UNARY_PLUS:
+        unary_operator = &u_plus;
+        break;
+      case UNARY_MINUS:
+        unary_operator = &u_minus;
+        break;
+      case LOGIC_NOT:
+        unary_operator = &u_not;
+        break;
+    }
+
+    if (expression->unary_operator->expression->type != VALUE){
+      temp = interpret_expression(expression->unary_operator->expression, variable_dictionnary);
+    } else {
+      temp = *expression->unary_operator->expression->value;
+    }
+
+    return unary_operator(&temp);
+  }
+
+  if (expression->type == BINARY_OPERATION){
+  	Value temp_left, temp_right;
+    Value (* binary_operator)(Value *, Value *);
+
+    switch (expression->binary_operator->type){
+	  case LOGIC_AND:
+        binary_operator = &l_and;
+        break;
+      case LOGIC_OR:
+        binary_operator = &l_or;
+        break;
+	  case LOGIC_XOR:
+        binary_operator = &l_xor;
+        break;
+	  case ADD:
+        binary_operator = &add;
+        break;
+	  case SUB:
+        binary_operator = &substract;
+        break;
+	  case MULT:
+        binary_operator = &multiply;
+        break;
+	  case DIV:
+        binary_operator = &divide;
+        break;
+	  case MOD:
+        binary_operator = &modulo;
+        break;
+	  case GREATER_THAN:
+        binary_operator = &greater_than;
+        break;
+	  case GREATER_EQUAL_THAN:
+        binary_operator = &greater_equal_than;
+        break;
+	  case LOWER_THAN:
+        binary_operator = &lower_than;
+        break;
+	  case LOWER_EQUAL_THAN:
+        binary_operator = &lower_equal_than;
+        break;
+	  case EQUAL_TO:
+        binary_operator = &equal_to;
+        break;
+	  case NOT_EQUAL_TO:
+        binary_operator = &not_equal_to;
+        break;
+    }
+
+    if (expression->binary_operator->left_expression != VALUE){
+      temp_left = interpret_expression(expression->binary_operator->left_expression, variable_dictionnary);
+    } else {
+      temp_left = *expression->binary_operator->left_expression->value;
+    }
+
+    if (expression->binary_operator->right_expression != VALUE){
+      temp_right = interpret_expression(expression->binary_operator->right_expression, variable_dictionnary);
+    } else {
+      temp_right = *expression->binary_operator->right_expression->value;
+    }
+
+    return binary_operator(&temp_left, &temp_right);
+  }
+
+  return result;
+}
 
 Value * cast(Value * value, Type type){
   Value * casted_value = malloc(sizeof(Value));
@@ -62,6 +209,8 @@ Value * cast(Value * value, Type type){
       case FLOAT:
         casted_value->float_value = (long double)value->unsigned_integer_value;
         return casted_value;
+      default:
+        break;
     }
   }
 
@@ -73,6 +222,8 @@ Value * cast(Value * value, Type type){
       case FLOAT:
         casted_value->float_value = (long double)value->integer_value;
         return casted_value;
+      default:
+      break;
     }
   }
 
@@ -84,6 +235,8 @@ Value * cast(Value * value, Type type){
       case INTEGER:
         casted_value->integer_value = (long long)value->float_value;
         return casted_value;
+      default:
+        break;
     }
   }
 
@@ -104,6 +257,45 @@ Value * cast(Value * value, Type type){
   free(casted_value);
   return NULL;
 
+}
+
+Value u_minus(Value * val){
+  Value result;
+  result.type = EMPTY;
+
+  if (val->type == INTEGER || val->type == FLOAT){
+    result.type = val->type;
+    if (val->type == INTEGER){
+      result.integer_value = - val->integer_value;
+    } else {
+      result.float_value = - val->float_value;
+    }
+  }
+
+  return result;
+}
+
+Value u_plus(Value * val){
+  if (val->type == INTEGER || val->type == FLOAT){
+    return *val;
+  }
+
+  Value empty;
+  empty.type = EMPTY;
+
+  return empty;
+}
+
+Value u_not(Value * val){
+  Value result;
+  result.type = EMPTY;
+
+  if (val->type == BOOL){
+     result.type = BOOL;
+     result.bool_value = ! val->bool_value;
+  }
+
+  return result;
 }
 
 Value l_and(Value * left, Value * right){
@@ -150,6 +342,8 @@ Value add(Value * left, Value * right){
         result.type = FLOAT;
         result.float_value = left->float_value + right->float_value;
         break;
+      default:
+        break;
     }
   } else if ((left->type == UNSIGNED_INTEGER || left->type == INTEGER) && right->type == FLOAT) {
     Value * casted_value = cast(left, FLOAT);
@@ -191,6 +385,8 @@ Value substract(Value * left, Value * right){
         result.type = FLOAT;
         result.float_value = left->float_value - right->float_value;
         break;
+      default:
+        break;
     }
   } else if ((left->type == UNSIGNED_INTEGER || left->type == INTEGER) && right->type == FLOAT) {
     Value * casted_value = cast(left, FLOAT);
@@ -222,7 +418,6 @@ Value multiply(Value * left, Value * right){
         result.type = UNSIGNED_INTEGER;
         result.unsigned_integer_value = left->unsigned_integer_value * right->unsigned_integer_value;
         break;
-        result.type = BOOL;
       case INTEGER:
         result.type = INTEGER;
         result.integer_value = left->integer_value * right->integer_value;
@@ -230,6 +425,8 @@ Value multiply(Value * left, Value * right){
       case FLOAT:
         result.type = FLOAT;
         result.float_value = left->float_value * right->float_value;
+        break;
+      default:
         break;
     }
   } else if ((left->type == UNSIGNED_INTEGER || left->type == INTEGER) && right->type == FLOAT) {
@@ -242,7 +439,7 @@ Value multiply(Value * left, Value * right){
     free(casted_value);
   } else if (right->type == UNSIGNED_INTEGER && left->type == INTEGER) {
     Value * casted_value = cast(left, UNSIGNED_INTEGER);
-    result = multiply(left, casted_value);
+    result = multiply(casted_value, right);
     free(casted_value);
   } else if (left->type == UNSIGNED_INTEGER && right->type == INTEGER) {
     Value * casted_value = cast(right, UNSIGNED_INTEGER);
@@ -262,7 +459,6 @@ Value divide(Value * left, Value * right){
         result.type = UNSIGNED_INTEGER;
         result.unsigned_integer_value = left->unsigned_integer_value / right->unsigned_integer_value;
         break;
-        result.type = BOOL;
       case INTEGER:
         result.type = INTEGER;
         result.integer_value = left->integer_value / right->integer_value;
@@ -270,6 +466,8 @@ Value divide(Value * left, Value * right){
       case FLOAT:
         result.type = FLOAT;
         result.float_value = left->float_value / right->float_value;
+        break;
+      default:
         break;
     }
   } else if ((left->type == UNSIGNED_INTEGER || left->type == INTEGER) && right->type == FLOAT) {
@@ -303,7 +501,6 @@ Value modulo(Value * left, Value * right){
         result.type = UNSIGNED_INTEGER;
         result.unsigned_integer_value = left->unsigned_integer_value % right->unsigned_integer_value;
         break;
-        result.type = BOOL;
       case INTEGER:
         result.type = INTEGER;
         result.integer_value = left->integer_value % right->integer_value;
@@ -311,6 +508,8 @@ Value modulo(Value * left, Value * right){
       case FLOAT:
         result.type = FLOAT;
         result.float_value = fmodl(left->float_value, right->float_value);
+        break;
+      default:
         break;
     }
   } else if ((left->type == UNSIGNED_INTEGER || left->type == INTEGER) && right->type == FLOAT) {
@@ -351,6 +550,8 @@ Value greater_than(Value * left, Value * right){
       case FLOAT:
         result.type = BOOL;
         result.bool_value = left->float_value > right->float_value;
+        break;
+      default:
         break;
     }
   } else if ((left->type == UNSIGNED_INTEGER || left->type == INTEGER) && right->type == FLOAT) {
@@ -396,6 +597,8 @@ Value greater_equal_than(Value * left, Value * right){
         result.type = BOOL;
         result.bool_value = left->float_value >= right->float_value;
         break;
+      default:
+        break;
     }
   } else if ((left->type == UNSIGNED_INTEGER || left->type == INTEGER) && right->type == FLOAT) {
     result.type = BOOL;
@@ -440,6 +643,8 @@ Value lower_than(Value * left, Value * right){
         result.type = BOOL;
         result.bool_value = left->float_value < right->float_value;
         break;
+      default:
+        break;
     }
   } else if ((left->type == UNSIGNED_INTEGER || left->type == INTEGER) && right->type == FLOAT) {
     result.type = BOOL;
@@ -483,6 +688,8 @@ Value lower_equal_than(Value * left, Value * right){
       case FLOAT:
         result.type = BOOL;
         result.bool_value = left->float_value <= right->float_value;
+        break;
+      default:
         break;
     }
   } else if ((left->type == UNSIGNED_INTEGER || left->type == INTEGER) && right->type == FLOAT) {
@@ -534,6 +741,8 @@ Value equal_to(Value * left, Value * right){
         break;
       case STRING:
         result.bool_value = !strcmp(left->string_value, right->string_value);
+        break;
+      default:
         break;
     }
   } else if ((left->type == UNSIGNED_INTEGER || left->type == INTEGER) && right->type == FLOAT) {
