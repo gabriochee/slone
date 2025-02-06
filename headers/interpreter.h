@@ -14,9 +14,10 @@ void free_variable_dictionnary(VariableDictionnary * variable_dictionnary);
 void add_to_variable_dictionnary(VariableDictionnary * dictionnary, Variable * variable);
 void assign_variable(Variable * variable, Value * value);
 
-Value * get_variable(Variable * variable, VariableDictionnary * dictionnary);
+Value * get_variable(Variable * variable, Program * program);
 
-Value interpret_expression(Expression * expression, VariableDictionnary * dictionnary);
+Value interpret_expression(Expression * expression, Program * program);
+void interpret_statement(Statement * statement, Program * program);
 
 Value * cast(Value * value, Type type);
 

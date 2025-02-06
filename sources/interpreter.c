@@ -6,54 +6,114 @@
 #include "../headers/interpreter.h"
 
 void interpret(Program * program, Program * parent){
+  program->parent = parent;
   for (unsigned int current = 0; current < program->current_instruction; current++){
     if (program->instructions[current]->type == EXPRESSION){
-      interpret_expression(program->instructions[current]->expression, program->variable_dictionary);
+      interpret_expression(program->instructions[current]->expression, program);
     } else {
-      StatementType type = program->instructions[current]->statement->type;
-      switch (type){
-        case ASSIGNMENT:
-          interpret_assignment(program->instructions[current]->statement->assignment, program);
-          break;
-        case CONDITIONAL_BRANCH:
-          //interpret_if(program->instructions[current]->statement->conditional_branch, program);
-          break;
-        case WHILE_LOOP:
-          //interpret_while(program->instructions[current]->statement->while_loop, program);
-          break;
-        case FOR_LOOP:
-          //interpret_for(program->instructions[current]->statement->for_loop, program);
-          break;
-        case PROGRAM:
-          //interpret(program->instructions[current]->statement->program, program);
-        default:
-          break;
-      }
+      interpret_statement(program->instructions[current]->statement, program);
     }
   }
 }
 
+void interpret_statement(Statement * statement, Program * program){
+      StatementType type = statement->type;
+      switch (type){
+        case ASSIGNMENT:
+          interpret_assignment(statement->assignment, program);
+          break;
+        case CONDITIONAL_BRANCH:
+          interpret_if(statement->conditional_branch, program);
+          break;
+        case WHILE_LOOP:
+          interpret_while(statement->while_loop, program);
+          break;
+        case FOR_LOOP:
+          interpret_for(statement->for_loop, program);
+          break;
+        case PROGRAM:
+          interpret(statement->program, program);
+        default:
+          break;
+      }
+}
+
 void interpret_assignment(Assignment * assignment, Program * program) {
-  if (get_variable(assignment->variable, program->variable_dictionary) == NULL) {
+
+  if (get_variable(assignment->variable, program) == NULL) {
+
     add_to_variable_dictionnary(program->variable_dictionary, assignment->variable);
+
     Value *val = malloc(sizeof(Value));
-    *val = interpret_expression(assignment->value, program->variable_dictionary);
+
+    *val = interpret_expression(assignment->value, program);
+
     assignment->variable->type = val->type;
     program->variable_dictionary->values[program->variable_dictionary->current - 1] = val;
+
   } else {
     for (unsigned int i = 0; i < program->variable_dictionary->current; i++) {
       if (strcmp(program->variable_dictionary->variables[i]->name, assignment->variable->name) == 0) {
         Value *val = malloc(sizeof(Value));
-        *val = interpret_expression(assignment->value, program->variable_dictionary);
+        *val = interpret_expression(assignment->value, program);
+
         assignment->variable->type = val->type;
         program->variable_dictionary->values[i] = val;
+        return;
       }
     }
+    interpret_assignment(assignment, program->parent);
   }
 }
-//void interpret_if(ConditionalBranch * conditional_branch, Program * program);
-//void interpret_while(WhileLoop * while_loop, Program * program);
-//void interpret_for(ForLoop * for_loop, Program * program);
+
+void interpret_if(ConditionalBranch * conditional_branch, Program * program){
+  Value condition = interpret_expression(conditional_branch->expression, program);
+  if (condition.type == BOOL){
+    if (condition.bool_value){
+      interpret(conditional_branch->true_branch, program);
+    } else {
+      interpret(conditional_branch->false_branch, program);
+    }
+  } else {
+    fprintf(stderr, "ERREUR IF: Une erreur est survenue dans la condition.\n");
+  }
+}
+
+void interpret_while(WhileLoop * while_loop, Program * program){
+  Value condition = interpret_expression(while_loop->condition, program);
+
+  if (condition.type == BOOL){
+    while (condition.bool_value && condition.type == BOOL){
+      interpret(while_loop->program, program);
+      condition = interpret_expression(while_loop->condition, program);
+    }
+  } else {
+    fprintf(stderr, "ERREUR WHILE : Une erreur est survenue dans la condition.\n");
+  }
+}
+
+void interpret_for(ForLoop * for_loop, Program * program){
+  Value condition;
+
+  if (for_loop->initial_statement->type != EMPTY_STATEMENT){
+    interpret_statement(for_loop->initial_statement, for_loop->program);
+    condition = interpret_expression(for_loop->condition, for_loop->program);
+  } else {
+    condition = interpret_expression(for_loop->condition, program);
+  }
+
+  if (condition.type == BOOL){
+
+    while (condition.bool_value && condition.type == BOOL){
+      interpret_statement(for_loop->modifier, for_loop->program);
+      interpret(for_loop->program, program);
+      condition = interpret_expression(for_loop->condition, for_loop->program);
+    }
+  } else {
+    fprintf(stderr, "ERREUR FOR : Une erreur est survenue dans la condition.\n");
+  }
+
+}
 
 void add_to_variable_dictionnary(VariableDictionnary * dictionnary, Variable * variable) {
   if (dictionnary->current >= dictionnary->capacity) {
@@ -66,17 +126,23 @@ void add_to_variable_dictionnary(VariableDictionnary * dictionnary, Variable * v
   }
 }
 
-Value * get_variable(Variable * variable, VariableDictionnary * dictionnary) {
+Value * get_variable(Variable * variable, Program * program) {
+  VariableDictionnary * dictionnary = program->variable_dictionary;
+
   for (unsigned int i = 0; i < dictionnary->current; i++) {
     if (strcmp(variable->name, dictionnary->variables[i]->name) == 0) {
       return dictionnary->values[i];
     }
   }
+  
+  if (program->parent != NULL){
+    return get_variable(variable, program->parent);
+  }
 
   return NULL;
 }
 
-Value interpret_expression(Expression * expression, VariableDictionnary * variable_dictionnary){
+Value interpret_expression(Expression * expression, Program * program){
   Value result;
   result.type = EMPTY;
 
@@ -85,12 +151,12 @@ Value interpret_expression(Expression * expression, VariableDictionnary * variab
   }
 
   if (expression->type == VARIABLE){
-    if (get_variable(expression->variable, variable_dictionnary) == NULL){
+    if (get_variable(expression->variable, program) == NULL){
       fprintf(stderr, "Variable '%s' introuvable.\n", expression->variable->name);
       return result;
     }
 
-    return *get_variable(expression->variable, variable_dictionnary);
+    return *get_variable(expression->variable, program);
   }
 
   if (expression->type == UNARY_OPERATION){
@@ -110,7 +176,7 @@ Value interpret_expression(Expression * expression, VariableDictionnary * variab
     }
 
     if (expression->unary_operator->expression->type != VALUE){
-      temp = interpret_expression(expression->unary_operator->expression, variable_dictionnary);
+      temp = interpret_expression(expression->unary_operator->expression, program);
     } else {
       temp = *expression->unary_operator->expression->value;
     }
@@ -168,13 +234,13 @@ Value interpret_expression(Expression * expression, VariableDictionnary * variab
     }
 
     if (expression->binary_operator->left_expression != VALUE){
-      temp_left = interpret_expression(expression->binary_operator->left_expression, variable_dictionnary);
+      temp_left = interpret_expression(expression->binary_operator->left_expression, program);
     } else {
       temp_left = *expression->binary_operator->left_expression->value;
     }
 
     if (expression->binary_operator->right_expression != VALUE){
-      temp_right = interpret_expression(expression->binary_operator->right_expression, variable_dictionnary);
+      temp_right = interpret_expression(expression->binary_operator->right_expression, program);
     } else {
       temp_right = *expression->binary_operator->right_expression->value;
     }
